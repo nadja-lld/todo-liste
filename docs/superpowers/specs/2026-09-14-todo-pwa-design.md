@@ -37,8 +37,9 @@ src/
 ```
 
 Build: Vite with `base` set to the repository name. `vite-plugin-pwa` generates manifest
-and service worker (auto-update strategy). The app shows a small "Aktualisieren" prompt
-when a new version is available.
+and service worker (prompt update strategy: the service worker waits and the app offers
+"Aktualisieren"). The app shows a small "Aktualisieren" prompt when a new version is
+available.
 
 ## 4. Data model
 

@@ -98,6 +98,30 @@ describe("App", () => {
     expect(screen.queryByText("In B später")).toBeNull();
   });
 
+  it("creates the follow-up when a recurring task is completed", () => {
+    const storage = fakeStorage({
+      [STATE_KEY]: JSON.stringify({
+        schemaVersion: 1,
+        lists: [{ id: "a", name: "A", position: 0 }],
+        tasks: [
+          {
+            id: "t1",
+            listId: "a",
+            title: "Müll rausbringen",
+            priority: "medium",
+            recurrence: "weekly",
+            dueDate: "2026-09-10",
+            createdAt: "2026-09-01T00:00:00Z",
+          },
+        ],
+      }),
+    });
+    render(<App storage={storage} now={now} />);
+    fireEvent.click(screen.getByRole("button", { name: /^Als erledigt markieren/ }));
+    expect(screen.getAllByText("Müll rausbringen")).toHaveLength(2);
+    expect(screen.getByText("Erledigt (1)")).toBeTruthy();
+  });
+
   it("keeps the completed section stable when it remounts while expanded", async () => {
     const storage = fakeStorage({
       [STATE_KEY]: JSON.stringify({

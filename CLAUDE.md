@@ -51,7 +51,11 @@ Dependency direction: `ui -> storage -> domain`, `ui -> domain`. Never import br
 
 ### Change storage shape
 
-1. Bump `SCHEMA_VERSION` in `types.ts`, add migration in `src/storage/localStorage.ts`, test the migration.
+There is no migration seam yet: `parseAppState` rejects any `schemaVersion` other than
+the current one, so bumping `SCHEMA_VERSION` without more work quarantines every
+existing user's data as corrupt on next load. Before bumping it, first add a migration
+step in `src/storage/localStorage.ts` that upgrades older stored documents to the new
+shape, with a test covering the migration, then bump `SCHEMA_VERSION` in `types.ts`.
 
 ## Deployment
 
