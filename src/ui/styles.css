@@ -425,3 +425,14 @@ textarea:focus-visible {
   opacity: 0;
   cursor: pointer;
 }
+.banner--info {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  color: var(--text);
+}
+.update-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--space-1) var(--space-2);
+}
