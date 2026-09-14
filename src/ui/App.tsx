@@ -1,7 +1,8 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { dueBucket, todayIso } from "../domain/dates";
 import { addTask, deleteTask, sortedLists, toggleTask, updateTask } from "../domain/state";
 import { t } from "../i18n";
+import { resolveStorage } from "../storage/resolveStorage";
 import { AddTaskBar } from "./AddTaskBar";
 import { ListSwitcher, type ViewId } from "./ListSwitcher";
 import { SettingsSheet } from "./SettingsSheet";
@@ -14,8 +15,14 @@ export interface AppProps {
   now?: () => Date;
 }
 
-export function App({ storage = window.localStorage, now = () => new Date() }: AppProps) {
-  const app = useAppState(storage, now);
+export function App({ storage, now = () => new Date() }: AppProps) {
+  const resolved = useRef<ReturnType<typeof resolveStorage> | null>(null);
+  if (resolved.current === null) {
+    resolved.current = storage ? { storage, available: true } : resolveStorage();
+  }
+  const effectiveStorage = storage ?? resolved.current.storage;
+  const storageAvailable = resolved.current.available;
+  const app = useAppState(effectiveStorage, now);
   const lists = sortedLists(app.state);
   const [view, setView] = useState<ViewId>(lists[0]?.id ?? "today");
   useEffect(() => {
@@ -55,7 +62,9 @@ export function App({ storage = window.localStorage, now = () => new Date() }: A
       {app.recoveredFromCorrupt && (
         <p class="banner banner--warning">{t("recoveredFromCorrupt")}</p>
       )}
-      {app.saveFailed && <p class="banner banner--error">{t("saveFailed")}</p>}
+      {(app.saveFailed || !storageAvailable) && (
+        <p class="banner banner--error">{t("saveFailed")}</p>
+      )}
 
       <ListSwitcher lists={lists} view={view} onSelect={setView} />
 

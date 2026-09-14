@@ -108,4 +108,25 @@ describe("SettingsSheet", () => {
     );
     expect(h.state.lists[0]?.name).toBe("A");
   });
+
+  it("notifies and keeps the state when the file cannot be read", async () => {
+    const notify = vi.fn();
+    const h = harness(createInitialState("A"), { notify });
+    const unreadableFile = { text: () => Promise.reject(new Error("unreadable")) };
+    const input = screen.getByLabelText("JSON importieren") as HTMLInputElement;
+    Object.defineProperty(input, "files", { value: [unreadableFile] });
+    fireEvent.change(input);
+    await waitFor(() => expect(notify).toHaveBeenCalledWith(expect.stringContaining("unreadable")));
+    expect(h.state.lists[0]?.name).toBe("A");
+  });
+
+  it("deletes an empty list without asking for confirmation", () => {
+    let state = createInitialState("A");
+    state = { ...state, lists: [...state.lists, { id: "b", name: "B", position: 1 }] };
+    const confirm = vi.fn(() => true);
+    const h = harness(state, { confirm });
+    fireEvent.click(screen.getByRole("button", { name: "Liste löschen: B" }));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(h.state.lists.map((l) => l.name)).toEqual(["A"]);
+  });
 });

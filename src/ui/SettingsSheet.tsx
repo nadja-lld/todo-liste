@@ -59,7 +59,14 @@ export function SettingsSheet({
     const file = input.files?.[0];
     input.value = "";
     if (!file) return;
-    const result = parseImport(await readFileText(file));
+    let text: string;
+    try {
+      text = await readFileText(file);
+    } catch (error) {
+      notify(t("importInvalid", { error: String(error instanceof Error ? error.message : error) }));
+      return;
+    }
+    const result = parseImport(text);
     if (!result.ok) {
       notify(t("importInvalid", { error: result.error }));
       return;
@@ -116,9 +123,10 @@ export function SettingsSheet({
                   return;
                 }
                 const count = taskCount(list.id);
-                if (confirm(t("confirmDeleteList", { name: list.name, count }))) {
-                  onUpdate((s) => deleteList(s, list.id));
+                if (count > 0 && !confirm(t("confirmDeleteList", { name: list.name, count }))) {
+                  return;
                 }
+                onUpdate((s) => deleteList(s, list.id));
               }}
             >
               ✕
