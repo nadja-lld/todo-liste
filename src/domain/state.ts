@@ -49,8 +49,20 @@ export function addTask(state: AppState, input: NewTaskInput, now: Date): AppSta
 export function updateTask(state: AppState, taskId: string, patch: TaskPatch): AppState {
   const existing = state.tasks.find((task) => task.id === taskId);
   if (!existing) return state;
-  const merged: Task = withoutUndefined({ ...existing, ...patch });
-  if (patch.title !== undefined && patch.title.trim() === "") merged.title = existing.title;
+  const merged: Task = { ...existing };
+  if (patch.title !== undefined && patch.title.trim() !== "") merged.title = patch.title.trim();
+  if (patch.listId !== undefined) merged.listId = patch.listId;
+  if (patch.priority !== undefined) merged.priority = patch.priority;
+  if (patch.recurrence !== undefined) merged.recurrence = patch.recurrence;
+  if ("note" in patch) {
+    const note = patch.note?.trim();
+    if (note === undefined || note === "") delete merged.note;
+    else merged.note = note;
+  }
+  if ("dueDate" in patch) {
+    if (patch.dueDate === undefined) delete merged.dueDate;
+    else merged.dueDate = patch.dueDate;
+  }
   return replaceTask(state, merged);
 }
 
@@ -82,10 +94,12 @@ export function toggleTask(state: AppState, taskId: string, now: Date): AppState
 }
 
 export function deleteTask(state: AppState, taskId: string): AppState {
+  if (!state.tasks.some((task) => task.id === taskId)) return state;
   return { ...state, tasks: state.tasks.filter((task) => task.id !== taskId) };
 }
 
 export function clearCompleted(state: AppState): AppState {
+  if (!state.tasks.some((task) => task.completedAt !== undefined)) return state;
   return { ...state, tasks: state.tasks.filter((task) => task.completedAt === undefined) };
 }
 
@@ -99,6 +113,7 @@ export function addList(state: AppState, name: string): AppState {
 export function renameList(state: AppState, listId: string, name: string): AppState {
   const trimmed = name.trim();
   if (trimmed === "") return state;
+  if (!state.lists.some((list) => list.id === listId)) return state;
   return {
     ...state,
     lists: state.lists.map((list) => (list.id === listId ? { ...list, name: trimmed } : list)),

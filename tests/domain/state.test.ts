@@ -69,6 +69,26 @@ describe("updateTask", () => {
     const cleared = updateTask(state, taskId, { dueDate: undefined });
     expect(cleared.tasks[0]).not.toHaveProperty("dueDate");
   });
+
+  it("keeps required fields when the patch sets them to undefined", () => {
+    const { state, taskId } = stateWithTask();
+    const result = updateTask(state, taskId, { title: undefined, priority: undefined });
+    expect(result.tasks[0]).toMatchObject({ title: "Miete", priority: "medium" });
+  });
+
+  it("trims the title and drops an empty note", () => {
+    const { state, taskId } = stateWithTask();
+    const result = updateTask(state, taskId, { title: "  Miete zahlen  ", note: "   " });
+    expect(result.tasks[0]).toMatchObject({ title: "Miete zahlen" });
+    expect(result.tasks[0]).not.toHaveProperty("note");
+  });
+
+  it("clears the note when set to undefined", () => {
+    const { state, taskId } = stateWithTask({ note: "Bank" });
+    expect(state.tasks[0]).toHaveProperty("note", "Bank");
+    const result = updateTask(state, taskId, { note: undefined });
+    expect(result.tasks[0]).not.toHaveProperty("note");
+  });
 });
 
 describe("toggleTask", () => {
@@ -129,12 +149,22 @@ describe("deleteTask / clearCompleted", () => {
     expect(deleteTask(state, taskId).tasks).toEqual([]);
   });
 
+  it("returns the same state when deleting an unknown task", () => {
+    const { state } = stateWithTask();
+    expect(deleteTask(state, "nope")).toBe(state);
+  });
+
   it("removes only completed tasks", () => {
     const { state, taskId, listId } = stateWithTask();
     const withSecond = addTask(state, { listId, title: "Offen" }, now);
     const done = toggleTask(withSecond, taskId, now);
     const cleared = clearCompleted(done);
     expect(cleared.tasks.map((t) => t.title)).toEqual(["Offen"]);
+  });
+
+  it("returns the same state when nothing is completed", () => {
+    const { state } = stateWithTask();
+    expect(clearCompleted(state)).toBe(state);
   });
 });
 
@@ -154,6 +184,11 @@ describe("lists", () => {
     const initial = createInitialState("Aufgaben");
     const renamed = renameList(initial, initial.lists[0]!.id, "Privat");
     expect(renamed.lists[0]?.name).toBe("Privat");
+  });
+
+  it("returns the same state when renaming an unknown list", () => {
+    const initial = createInitialState("Aufgaben");
+    expect(renameList(initial, "nope", "X")).toBe(initial);
   });
 
   it("moves a list up and down and ignores moves past the edges", () => {
