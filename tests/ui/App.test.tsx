@@ -97,4 +97,62 @@ describe("App", () => {
     expect(screen.getByText("In B überfällig")).toBeTruthy();
     expect(screen.queryByText("In B später")).toBeNull();
   });
+
+  it("keeps the completed section stable when it remounts while expanded", async () => {
+    const storage = fakeStorage({
+      [STATE_KEY]: JSON.stringify({
+        schemaVersion: 1,
+        lists: [
+          { id: "a", name: "A", position: 0 },
+          { id: "b", name: "B", position: 1 },
+        ],
+        tasks: [
+          {
+            id: "t1",
+            listId: "a",
+            title: "Erledigt in A",
+            priority: "medium",
+            recurrence: "none",
+            createdAt: "2026-09-01T00:00:00Z",
+            completedAt: "2026-09-01T00:00:00Z",
+          },
+        ],
+      }),
+    });
+
+    let toggleCount = 0;
+    const countToggle = () => {
+      toggleCount += 1;
+    };
+    document.addEventListener("toggle", countToggle, true);
+
+    try {
+      render(<App storage={storage} now={now} />);
+
+      // List A is the default view; expand its completed section like a user would.
+      fireEvent.click(screen.getByText("Erledigt (1)"));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      let details = document.querySelector("details.completed") as HTMLDetailsElement | null;
+      expect(details?.open).toBe(true);
+
+      // Switch to list B, which has no completed tasks: the <details> unmounts.
+      fireEvent.click(screen.getByRole("tab", { name: "B" }));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(document.querySelector("details.completed")).toBeNull();
+
+      // Switch back to A: the <details> remounts with open=true, which used to
+      // trigger an infinite toggle -> setState -> toggle loop.
+      fireEvent.click(screen.getByRole("tab", { name: "A" }));
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      details = document.querySelector("details.completed") as HTMLDetailsElement | null;
+      expect(details).not.toBeNull();
+      expect(details?.open).toBe(true);
+      // One toggle for the manual expand, one for the remount-while-open. A
+      // runaway loop fires this hundreds of times within the wait above.
+      expect(toggleCount).toBeLessThanOrEqual(3);
+    } finally {
+      document.removeEventListener("toggle", countToggle, true);
+    }
+  });
 });

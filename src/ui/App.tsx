@@ -66,7 +66,7 @@ export function App({ storage = window.localStorage, now = () => new Date() }: A
         showListName={view === "today"}
         emptyMessage={view === "today" ? t("emptyToday") : t("emptyList")}
         showCompleted={showCompleted}
-        onToggleShowCompleted={() => setShowCompleted((value) => !value)}
+        onShowCompletedChange={setShowCompleted}
         onToggle={(taskId) => app.update((state) => toggleTask(state, taskId, now()))}
         onOpen={setSelectedTaskId}
       />

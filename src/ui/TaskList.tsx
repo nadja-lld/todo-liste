@@ -10,7 +10,7 @@ interface Props {
   showListName: boolean;
   emptyMessage: string;
   showCompleted: boolean;
-  onToggleShowCompleted: () => void;
+  onShowCompletedChange: (open: boolean) => void;
   onToggle: (taskId: string) => void;
   onOpen: (taskId: string) => void;
 }
@@ -43,7 +43,9 @@ export function TaskList(props: Props) {
         <details
           class="completed"
           open={props.showCompleted}
-          onToggle={props.onToggleShowCompleted}
+          onToggle={(event) =>
+            props.onShowCompletedChange((event.currentTarget as HTMLDetailsElement).open)
+          }
         >
           <summary>{t("completedSection", { count: completed.length })}</summary>
           <ul>
