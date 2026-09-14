@@ -15,6 +15,8 @@
   --warning-fg: #6b4b00;
   --error-bg: #ffe1de;
   --error-fg: #7a1c14;
+  --on-accent: #ffffff;
+  --on-danger: #ffffff;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -30,6 +32,8 @@
     --warning-fg: #ffd66b;
     --error-bg: #3d1410;
     --error-fg: #ff9a8f;
+    --on-accent: #101014;
+    --on-danger: #1a0b09;
   }
 }
 * {
@@ -115,7 +119,7 @@ textarea:focus-visible {
 .segment--active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .task-list {
   flex: 1;
@@ -165,7 +169,8 @@ textarea:focus-visible {
   top: 13px;
   width: 6px;
   height: 12px;
-  border: solid #fff;
+  border: solid;
+  border-color: var(--on-accent);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -255,7 +260,7 @@ textarea:focus-visible {
   border: none;
   border-radius: 9999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
 }
 .add-bar button:disabled {
@@ -340,7 +345,7 @@ textarea:focus-visible {
   border: none;
   border-radius: 9999px;
   background: var(--danger);
-  color: #fff;
+  color: var(--on-danger);
   font-weight: 600;
 }
 .section-title {
@@ -401,7 +406,7 @@ textarea:focus-visible {
 .primary-button {
   border: none;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .secondary-button {
   display: flex;

@@ -42,7 +42,7 @@ describe("App", () => {
     const input = screen.getByPlaceholderText("Neue Aufgabe");
     fireEvent.input(input, { target: { value: "Aufräumen" } });
     fireEvent.submit(input.closest("form")!);
-    fireEvent.click(screen.getByRole("button", { name: "Als erledigt markieren" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Als erledigt markieren/ }));
     expect(screen.getByText("Erledigt (1)")).toBeTruthy();
     expect(screen.getByText("Keine offenen Aufgaben")).toBeTruthy();
   });

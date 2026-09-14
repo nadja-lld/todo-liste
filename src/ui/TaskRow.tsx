@@ -18,16 +18,11 @@ export function TaskRow({ task, today, listName, onToggle, onOpen }: Props) {
       <button
         type="button"
         class={`check ${done ? "check--done" : ""}`}
-        aria-label={done ? t("markOpen") : t("markDone")}
+        aria-label={`${done ? t("markOpen") : t("markDone")}: ${task.title}`}
         onClick={() => onToggle(task.id)}
       />
       <span class={`priority-dot priority-dot--${task.priority}`} aria-hidden="true" />
-      <button
-        type="button"
-        class="task-body"
-        aria-label={t("openTask")}
-        onClick={() => onOpen(task.id)}
-      >
+      <button type="button" class="task-body" onClick={() => onOpen(task.id)}>
         <span class="task-title">{task.title}</span>
         <span class="task-meta">
           {task.dueDate && (
