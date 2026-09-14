@@ -50,6 +50,17 @@ describe("loadState", () => {
     const result = loadState(storage, "Aufgaben", now);
     expect(result.recoveredFromCorrupt).toBe(true);
   });
+
+  it("does not throw and keeps the corrupt data when the backup write fails", () => {
+    const storage = fakeStorage({ [STATE_KEY]: "{broken" });
+    storage.setItem = () => {
+      throw new Error("QuotaExceededError");
+    };
+    const result = loadState(storage, "Aufgaben", now);
+    expect(result.recoveredFromCorrupt).toBe(true);
+    expect(result.state.lists[0]?.name).toBe("Aufgaben");
+    expect(storage.getItem(STATE_KEY)).toBe("{broken");
+  });
 });
 
 describe("saveState", () => {

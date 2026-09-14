@@ -19,6 +19,15 @@ function tryParse(text: string): AppState | null {
   }
 }
 
+function tryBackup(storage: Storage, payload: string, now: Date): boolean {
+  try {
+    storage.setItem(`${BACKUP_KEY_PREFIX}${now.toISOString()}`, payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function loadState(storage: Storage, defaultListName: string, now: Date): LoadResult {
   const stored = storage.getItem(STATE_KEY);
   if (stored === null) {
@@ -27,8 +36,8 @@ export function loadState(storage: Storage, defaultListName: string, now: Date):
   const state = tryParse(stored);
   if (state) return { state, recoveredFromCorrupt: false };
 
-  storage.setItem(`${BACKUP_KEY_PREFIX}${now.toISOString()}`, stored);
-  storage.removeItem(STATE_KEY);
+  const backedUp = tryBackup(storage, stored, now);
+  if (backedUp) storage.removeItem(STATE_KEY);
   return { state: createInitialState(defaultListName), recoveredFromCorrupt: true };
 }
 
