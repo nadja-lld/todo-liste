@@ -1,9 +1,10 @@
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { dueBucket, todayIso } from "../domain/dates";
 import { addTask, deleteTask, sortedLists, toggleTask, updateTask } from "../domain/state";
 import { t } from "../i18n";
 import { AddTaskBar } from "./AddTaskBar";
 import { ListSwitcher, type ViewId } from "./ListSwitcher";
+import { SettingsSheet } from "./SettingsSheet";
 import { TaskDetailSheet } from "./TaskDetailSheet";
 import { TaskList } from "./TaskList";
 import { useAppState } from "./useAppState";
@@ -17,6 +18,11 @@ export function App({ storage = window.localStorage, now = () => new Date() }: A
   const app = useAppState(storage, now);
   const lists = sortedLists(app.state);
   const [view, setView] = useState<ViewId>(lists[0]?.id ?? "today");
+  useEffect(() => {
+    if (view !== "today" && !lists.some((list) => list.id === view)) {
+      setView(lists[0]?.id ?? "today");
+    }
+  }, [view, lists]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -82,8 +88,19 @@ export function App({ storage = window.localStorage, now = () => new Date() }: A
           onClose={() => setSelectedTaskId(null)}
         />
       )}
-      {/* Task 11: <SettingsSheet open={settingsOpen} ... /> */}
-      {settingsOpen && null}
+      {settingsOpen && (
+        <SettingsSheet
+          state={app.state}
+          today={today}
+          onUpdate={app.update}
+          onReplace={(next) => {
+            app.replace(next);
+            setView(sortedLists(next)[0]?.id ?? "today");
+            setSelectedTaskId(null);
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 }
