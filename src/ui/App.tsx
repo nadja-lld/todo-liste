@@ -1,9 +1,10 @@
 import { useState } from "preact/hooks";
 import { dueBucket, todayIso } from "../domain/dates";
-import { addTask, sortedLists, toggleTask } from "../domain/state";
+import { addTask, deleteTask, sortedLists, toggleTask, updateTask } from "../domain/state";
 import { t } from "../i18n";
 import { AddTaskBar } from "./AddTaskBar";
 import { ListSwitcher, type ViewId } from "./ListSwitcher";
+import { TaskDetailSheet } from "./TaskDetailSheet";
 import { TaskList } from "./TaskList";
 import { useAppState } from "./useAppState";
 
@@ -29,6 +30,7 @@ export function App({ storage = window.localStorage, now = () => new Date() }: A
           return bucket === "today" || bucket === "overdue";
         })
       : app.state.tasks.filter((task) => task.listId === activeListId);
+  const selectedTask = app.state.tasks.find((task) => task.id === selectedTaskId) ?? null;
 
   return (
     <div class="app">
@@ -71,9 +73,16 @@ export function App({ storage = window.localStorage, now = () => new Date() }: A
         }
       />
 
-      {/* Task 10: <TaskDetailSheet taskId={selectedTaskId} ... /> */}
+      {selectedTask && (
+        <TaskDetailSheet
+          task={selectedTask}
+          lists={lists}
+          onPatch={(taskId, patch) => app.update((state) => updateTask(state, taskId, patch))}
+          onDelete={(taskId) => app.update((state) => deleteTask(state, taskId))}
+          onClose={() => setSelectedTaskId(null)}
+        />
+      )}
       {/* Task 11: <SettingsSheet open={settingsOpen} ... /> */}
-      {selectedTaskId && null}
       {settingsOpen && null}
     </div>
   );
