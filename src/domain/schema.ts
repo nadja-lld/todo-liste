@@ -37,9 +37,26 @@ function optionalString(value: unknown, path: string): string | undefined {
 function requireIsoDate(value: unknown, path: string): string | undefined {
   if (value === undefined) return undefined;
   const text = requireString(value, path);
-  if (!ISO_DATE.test(text) || Number.isNaN(Date.parse(`${text}T00:00:00Z`))) {
+  if (!ISO_DATE.test(text)) {
     fail(`${path} must be an ISO date YYYY-MM-DD`);
   }
+
+  // Parse and validate the date components to reject impossible calendar dates
+  const [yearStr, monthStr, dayStr] = text.split("-");
+  const year = parseInt(yearStr!, 10);
+  const month = parseInt(monthStr!, 10);
+  const day = parseInt(dayStr!, 10);
+
+  // Create a UTC date and verify round-trip to detect normalization
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() + 1 !== month ||
+    date.getUTCDate() !== day
+  ) {
+    fail(`${path} must be an ISO date YYYY-MM-DD`);
+  }
+
   return text;
 }
 
