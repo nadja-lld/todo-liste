@@ -64,10 +64,23 @@ describe("sortOpenTasks", () => {
 });
 
 describe("splitTasks", () => {
+  const doneToday = new Date(2026, 8, 14, 10, 0).toISOString();
+  const doneYesterday = new Date(2026, 8, 13, 10, 0).toISOString();
+
   it("separates open and completed tasks", () => {
-    const tasks = [task({ id: "open" }), task({ id: "done", completedAt: "2026-09-13T10:00:00Z" })];
-    const { open, completed } = splitTasks(tasks);
+    const tasks = [task({ id: "open" }), task({ id: "done", completedAt: doneToday })];
+    const { open, completed } = splitTasks(tasks, today);
     expect(open.map((t) => t.id)).toEqual(["open"]);
     expect(completed.map((t) => t.id)).toEqual(["done"]);
+  });
+
+  it("drops tasks completed before today from the completed list", () => {
+    const tasks = [
+      task({ id: "yesterday", completedAt: doneYesterday }),
+      task({ id: "today", completedAt: doneToday }),
+    ];
+    const { open, completed } = splitTasks(tasks, today);
+    expect(open).toEqual([]);
+    expect(completed.map((t) => t.id)).toEqual(["today"]);
   });
 });

@@ -4,6 +4,7 @@ import {
   addMonthsClamped,
   dueBucket,
   formatDueDate,
+  isoDateOfTimestamp,
   toIsoDate,
 } from "../../src/domain/dates";
 
@@ -56,5 +57,16 @@ describe("formatDueDate", () => {
   it("formats other dates as DD.MM.YYYY", () => {
     expect(formatDueDate("2026-10-01", today, labels)).toBe("01.10.2026");
     expect(formatDueDate("2026-09-13", today, labels)).toBe("13.09.2026");
+  });
+});
+
+describe("isoDateOfTimestamp", () => {
+  it("returns the local calendar date of a timestamp", () => {
+    expect(isoDateOfTimestamp(new Date(2026, 8, 14, 23, 30).toISOString())).toBe("2026-09-14");
+    expect(isoDateOfTimestamp(new Date(2026, 8, 15, 0, 15).toISOString())).toBe("2026-09-15");
+  });
+
+  it("returns an empty string for an unparsable timestamp", () => {
+    expect(isoDateOfTimestamp("nope")).toBe("");
   });
 });

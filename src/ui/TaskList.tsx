@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function TaskList(props: Props) {
-  const { open, completed } = splitTasks(props.tasks);
+  const { open, completed } = splitTasks(props.tasks, props.today);
   const sortedOpen = sortOpenTasks(open, props.today);
   const listName = (task: Task) =>
     props.showListName ? props.lists.find((list) => list.id === task.listId)?.name : undefined;

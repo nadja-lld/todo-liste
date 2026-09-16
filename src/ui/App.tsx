@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { dueBucket, todayIso } from "../domain/dates";
+import { addDays, dueBucket, todayIso } from "../domain/dates";
 import { addTask, deleteTask, sortedLists, toggleTask, updateTask } from "../domain/state";
 import { t } from "../i18n";
 import { resolveStorage } from "../storage/resolveStorage";
@@ -9,6 +9,16 @@ import { SettingsSheet } from "./SettingsSheet";
 import { TaskDetailSheet } from "./TaskDetailSheet";
 import { TaskList } from "./TaskList";
 import { useAppState } from "./useAppState";
+
+function isOverviewView(view: ViewId): boolean {
+  return view === "today" || view === "tomorrow";
+}
+
+function emptyMessage(view: ViewId): string {
+  if (view === "today") return t("emptyToday");
+  if (view === "tomorrow") return t("emptyTomorrow");
+  return t("emptyList");
+}
 
 export interface AppProps {
   storage?: Storage;
@@ -26,7 +36,7 @@ export function App({ storage, now = () => new Date() }: AppProps) {
   const lists = sortedLists(app.state);
   const [view, setView] = useState<ViewId>(lists[0]?.id ?? "today");
   useEffect(() => {
-    if (view !== "today" && !lists.some((list) => list.id === view)) {
+    if (!isOverviewView(view) && !lists.some((list) => list.id === view)) {
       setView(lists[0]?.id ?? "today");
     }
   }, [view, lists]);
@@ -34,15 +44,18 @@ export function App({ storage, now = () => new Date() }: AppProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const today = todayIso(now());
+  const tomorrow = addDays(today, 1);
 
-  const activeListId = view !== "today" && lists.some((l) => l.id === view) ? view : null;
+  const activeListId = !isOverviewView(view) && lists.some((l) => l.id === view) ? view : null;
   const visibleTasks =
     view === "today"
       ? app.state.tasks.filter((task) => {
           const bucket = dueBucket(task.dueDate, today);
           return bucket === "today" || bucket === "overdue";
         })
-      : app.state.tasks.filter((task) => task.listId === activeListId);
+      : view === "tomorrow"
+        ? app.state.tasks.filter((task) => task.dueDate === tomorrow)
+        : app.state.tasks.filter((task) => task.listId === activeListId);
   const selectedTask = app.state.tasks.find((task) => task.id === selectedTaskId) ?? null;
 
   return (
@@ -72,8 +85,8 @@ export function App({ storage, now = () => new Date() }: AppProps) {
         tasks={visibleTasks}
         lists={lists}
         today={today}
-        showListName={view === "today"}
-        emptyMessage={view === "today" ? t("emptyToday") : t("emptyList")}
+        showListName={isOverviewView(view)}
+        emptyMessage={emptyMessage(view)}
         showCompleted={showCompleted}
         onShowCompletedChange={setShowCompleted}
         onToggle={(taskId) => app.update((state) => toggleTask(state, taskId, now()))}

@@ -12,6 +12,12 @@ export function todayIso(now: Date): string {
   return toIsoDate(now);
 }
 
+/** Local calendar date of an ISO 8601 timestamp, or "" if it cannot be parsed. */
+export function isoDateOfTimestamp(timestamp: string): string {
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? "" : toIsoDate(date);
+}
+
 function parseIsoDate(isoDate: string): { year: number; month: number; day: number } {
   const [year, month, day] = isoDate.split("-").map(Number);
   if (year === undefined || month === undefined || day === undefined) {

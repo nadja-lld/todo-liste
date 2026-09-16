@@ -138,7 +138,7 @@ describe("App", () => {
             priority: "medium",
             recurrence: "none",
             createdAt: "2026-09-01T00:00:00Z",
-            completedAt: "2026-09-01T00:00:00Z",
+            completedAt: new Date(2026, 8, 14, 8, 0).toISOString(),
           },
         ],
       }),
@@ -178,5 +178,89 @@ describe("App", () => {
     } finally {
       document.removeEventListener("toggle", countToggle, true);
     }
+  });
+  it("shows only tasks completed today in the completed section", () => {
+    const storage = fakeStorage({
+      [STATE_KEY]: JSON.stringify({
+        schemaVersion: 1,
+        lists: [{ id: "a", name: "A", position: 0 }],
+        tasks: [
+          {
+            id: "t1",
+            listId: "a",
+            title: "Heute erledigt",
+            priority: "medium",
+            recurrence: "none",
+            createdAt: "2026-09-01T00:00:00Z",
+            completedAt: new Date(2026, 8, 14, 8, 0).toISOString(),
+          },
+          {
+            id: "t2",
+            listId: "a",
+            title: "Gestern erledigt",
+            priority: "medium",
+            recurrence: "none",
+            createdAt: "2026-09-01T00:00:00Z",
+            completedAt: new Date(2026, 8, 13, 20, 0).toISOString(),
+          },
+        ],
+      }),
+    });
+    render(<App storage={storage} now={now} />);
+    expect(screen.getByText("Erledigt (1)")).toBeTruthy();
+    expect(screen.getByText("Heute erledigt")).toBeTruthy();
+    expect(screen.queryByText("Gestern erledigt")).toBeNull();
+  });
+
+  it("shows the tomorrow view with tasks due tomorrow across lists", () => {
+    const storage = fakeStorage({
+      [STATE_KEY]: JSON.stringify({
+        schemaVersion: 1,
+        lists: [
+          { id: "a", name: "A", position: 0 },
+          { id: "b", name: "B", position: 1 },
+        ],
+        tasks: [
+          {
+            id: "t1",
+            listId: "a",
+            title: "In A morgen",
+            priority: "medium",
+            recurrence: "none",
+            dueDate: "2026-09-15",
+            createdAt: "2026-09-01T00:00:00Z",
+          },
+          {
+            id: "t2",
+            listId: "b",
+            title: "In B heute",
+            priority: "medium",
+            recurrence: "none",
+            dueDate: "2026-09-14",
+            createdAt: "2026-09-01T00:00:00Z",
+          },
+          {
+            id: "t3",
+            listId: "b",
+            title: "In B überfällig",
+            priority: "medium",
+            recurrence: "none",
+            dueDate: "2026-09-01",
+            createdAt: "2026-09-01T00:00:00Z",
+          },
+        ],
+      }),
+    });
+    render(<App storage={storage} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Morgen" }));
+    expect(screen.getByText("In A morgen")).toBeTruthy();
+    expect(screen.queryByText("In B heute")).toBeNull();
+    expect(screen.queryByText("In B überfällig")).toBeNull();
+  });
+
+  it("says nothing is due when the tomorrow view is empty", () => {
+    render(<App storage={fakeStorage()} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Morgen" }));
+    expect(screen.getByText("Morgen ist nichts fällig")).toBeTruthy();
   });
 });

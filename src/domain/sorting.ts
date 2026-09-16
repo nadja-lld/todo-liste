@@ -1,4 +1,4 @@
-import { dueBucket, type DueBucket } from "./dates";
+import { dueBucket, isoDateOfTimestamp, type DueBucket } from "./dates";
 import type { Priority, Task } from "./types";
 
 const BUCKET_ORDER: Record<DueBucket, number> = { overdue: 0, today: 1, future: 2, none: 3 };
@@ -21,11 +21,13 @@ export function sortOpenTasks(tasks: Task[], today: string): Task[] {
   });
 }
 
-export function splitTasks(tasks: Task[]): { open: Task[]; completed: Task[] } {
+/** Completed tasks are limited to the ones finished on `today` so the section stays a daily recap. */
+export function splitTasks(tasks: Task[], today: string): { open: Task[]; completed: Task[] } {
   const open: Task[] = [];
   const completed: Task[] = [];
   for (const task of tasks) {
-    (task.completedAt === undefined ? open : completed).push(task);
+    if (task.completedAt === undefined) open.push(task);
+    else if (isoDateOfTimestamp(task.completedAt) === today) completed.push(task);
   }
   return { open, completed };
 }
