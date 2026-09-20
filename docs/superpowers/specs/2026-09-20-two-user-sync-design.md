@@ -173,8 +173,11 @@ Rules:
 - Entities are matched by `id` across `lists` and `tasks`.
 - An entity present on one side only is kept.
 - An entity present on both sides resolves to the one with the greater `updatedAt`.
-  On an exact tie, the one whose `id` sorts higher wins, so both devices reach the
-  same result independently.
+  On an exact tie the id cannot decide — it is the same entity on both sides — so the
+  tie falls back to comparing a canonical serialization of the entity. The winner is
+  arbitrary but identical on both devices, which is what convergence requires.
+  (Corrected during implementation; the original "ties broken by id" rule did not
+  converge, and `tests/domain/merge.test.ts` now pins the corrected behaviour.)
 - A tombstone is an ordinary state: deletion wins when it is later, and loses when the
   other side edited afterwards.
 - `users` merges per user id by the same rule; name changes carry their own
