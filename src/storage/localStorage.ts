@@ -2,6 +2,7 @@ import { parseAppState } from "../domain/schema";
 import { createInitialState } from "../domain/state";
 import type { AppState, UserNames } from "../domain/types";
 import { migrate } from "../domain/migrate";
+import { purgeExpired } from "../domain/purge";
 
 export const STATE_KEY = "todo.state";
 export const BACKUP_KEY_PREFIX = "todo.state.backup.";
@@ -14,7 +15,7 @@ export interface LoadResult {
 function tryParse(text: string, names: UserNames, now: Date): AppState | null {
   try {
     const parsed = parseAppState(migrate(JSON.parse(text), names, now));
-    return parsed.ok ? parsed.state : null;
+    return parsed.ok ? purgeExpired(parsed.state, now) : null;
   } catch {
     return null;
   }

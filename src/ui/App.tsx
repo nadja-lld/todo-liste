@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { addDays, dueBucket, todayIso } from "../domain/dates";
-import { inboxListId, listsOf, tasksOf } from "../domain/selectors";
+import { delegatedBy, inboxListId, listsOf, otherUser, tasksOf } from "../domain/selectors";
 import { addTask, deleteTask, markTaskSeen, toggleTask, updateTask } from "../domain/state";
 import type { Task, UserId } from "../domain/types";
 import { t } from "../i18n";
@@ -13,6 +13,7 @@ import {
 import { resolveStorage } from "../storage/resolveStorage";
 import { syncStatusKey } from "../sync/status";
 import { AddTaskBar } from "./AddTaskBar";
+import { DelegatedList } from "./DelegatedList";
 import { ListSwitcher, type ViewId } from "./ListSwitcher";
 import { Onboarding } from "./Onboarding";
 import { SettingsSheet } from "./SettingsSheet";
@@ -23,7 +24,7 @@ import { useAppState } from "./useAppState";
 import { useSync } from "./useSync";
 
 function isOverviewView(view: ViewId): boolean {
-  return view === "today" || view === "tomorrow";
+  return view === "today" || view === "tomorrow" || view === "delegated";
 }
 
 function emptyMessage(view: ViewId): string {
@@ -84,6 +85,7 @@ export function App({ storage, now = () => new Date() }: AppProps) {
   }
 
   const ownTasks = tasksOf(app.state, identity);
+  const other = otherUser(identity);
   const activeListId = !isOverviewView(view) && lists.some((l) => l.id === view) ? view : null;
   const visibleTasks =
     view === "today"
@@ -133,21 +135,29 @@ export function App({ storage, now = () => new Date() }: AppProps) {
 
       <ListSwitcher lists={lists} view={view} onSelect={setView} />
 
-      <TaskList
-        tasks={visibleTasks}
-        lists={lists}
-        today={today}
-        showListName={isOverviewView(view)}
-        emptyMessage={emptyMessage(view)}
-        showCompleted={showCompleted}
-        onShowCompletedChange={setShowCompleted}
-        newFromName={newFromName}
-        onToggle={(taskId) => app.update((state) => toggleTask(state, taskId, now()))}
-        onOpen={openTask}
-      />
+      {view === "delegated" ? (
+        <DelegatedList
+          tasks={delegatedBy(app.state, identity)}
+          today={today}
+          assigneeName={userName(other)}
+        />
+      ) : (
+        <TaskList
+          tasks={visibleTasks}
+          lists={lists}
+          today={today}
+          showListName={isOverviewView(view)}
+          emptyMessage={emptyMessage(view)}
+          showCompleted={showCompleted}
+          onShowCompletedChange={setShowCompleted}
+          newFromName={newFromName}
+          onToggle={(taskId) => app.update((state) => toggleTask(state, taskId, now()))}
+          onOpen={openTask}
+        />
+      )}
 
       <AddTaskBar
-        disabled={lists.length === 0}
+        disabled={lists.length === 0 || view === "delegated"}
         onAdd={(title) =>
           app.update((state) => {
             // A new task is always mine. The dated overviews have no list of

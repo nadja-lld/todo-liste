@@ -496,3 +496,30 @@ textarea:focus-visible {
   padding: 0 0 var(--space-1);
   color: var(--text-muted);
 }
+
+/* The handed-over view is read-only, so its rows do not behave like buttons. */
+.task-body--static {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+.delegated-state--open {
+  color: var(--accent);
+  font-weight: 600;
+}
+.delegated-state--done {
+  color: var(--text-muted);
+}
+.field--readonly {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+}
+.field--readonly strong {
+  color: var(--text);
+}

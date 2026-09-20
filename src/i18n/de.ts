@@ -81,5 +81,10 @@ export const de = {
   resetDevice: "Gerät zurücksetzen",
   confirmResetDevice:
     "Zugangscode und Identität auf diesem Gerät löschen? Die Aufgaben bleiben erhalten.",
+  delegatedView: "Vergeben",
+  createdByLabel: "Angelegt von",
+  emptyDelegated: "Du hast nichts abgegeben",
+  delegatedDone: "Erledigt",
+  delegatedOpen: "Offen",
   overdue: "Überfällig",
 } as const;

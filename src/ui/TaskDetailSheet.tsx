@@ -84,6 +84,11 @@ export function TaskDetailSheet({
         />
       </label>
 
+      <p class="field field--readonly">
+        <span>{t("createdByLabel")}</span>
+        <strong>{userNames[task.createdBy]}</strong>
+      </p>
+
       <label class="field">
         <span>{t("assignee")}</span>
         <select

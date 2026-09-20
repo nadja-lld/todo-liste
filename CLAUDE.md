@@ -51,6 +51,9 @@ event listeners belong in `useSync`, which is what keeps the conflict path testa
   Every reducer stamps `updatedAt`; without it the change loses the next merge.
 - Deletions are tombstones (`deletedAt`), never removals. Read through the selectors in
   `src/domain/selectors.ts` (`liveLists`, `tasksOf`, …) so tombstones stay out of the UI.
+- Retention lives in `src/domain/purge.ts` and runs on load and on every merge: tombstones
+  and finished tasks are dropped after 30 days. Both devices apply the same rule to the
+  same data, so they converge without exchanging anything extra.
 - The two people and their names are fixed in code: ids `"a"`/`"b"` in `USER_IDS`,
   names in `src/ui/userNames.ts` via the i18n keys `userAName`/`userBName`. The
   `users` array in the stored document is a leftover from when names were editable;

@@ -426,4 +426,57 @@ describe("App with two people", () => {
     fireEvent.submit(input.closest("form")!);
     expect(screen.queryByText(/^Neu von/)).toBeNull();
   });
+
+  it("offers a Vergeben tab that shows what I handed over, with its status", () => {
+    const state = twoPersonState();
+    state.tasks.push({
+      id: "t-weg",
+      listId: "lb",
+      title: "Müll rausbringen",
+      priority: "medium",
+      recurrence: "none",
+      createdAt: "2026-09-14T07:30:00.000Z",
+      createdBy: "a",
+      updatedAt: "2026-09-14T07:30:00.000Z",
+    } as (typeof state.tasks)[number]);
+    render(
+      <App
+        storage={fakeStorage({
+          [STATE_KEY]: JSON.stringify(state),
+          "todo.identity": "a",
+          "todo.accessCode": "s3cret",
+        })}
+        now={now}
+      />,
+    );
+
+    // Not in my own views ...
+    expect(screen.queryByText("Müll rausbringen")).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Vergeben" }));
+    // ... but visible here, with who has it and whether it is done.
+    expect(screen.getByText("Müll rausbringen")).toBeTruthy();
+    expect(screen.getByText("Offen")).toBeTruthy();
+    expect(screen.getByText("Gerald")).toBeTruthy();
+  });
+
+  it("does not show the other person's own tasks in the Vergeben tab", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Vergeben" }));
+    expect(screen.queryByText("Fremde Aufgabe")).toBeNull();
+    expect(screen.getByText("Du hast nichts abgegeben")).toBeTruthy();
+  });
+
+  it("cannot add tasks from the Vergeben tab", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Vergeben" }));
+    expect((screen.getByPlaceholderText("Neue Aufgabe") as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it("names the creator in the task detail", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    fireEvent.click(screen.getByRole("button", { name: /^Meine Aufgabe/ }));
+    // "Nadja" is also an option in the assignee select, so scope to the line.
+    const line = screen.getByText("Angelegt von").closest("p");
+    expect(line?.textContent).toContain("Nadja");
+  });
 });

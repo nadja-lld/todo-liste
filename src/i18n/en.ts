@@ -80,5 +80,10 @@ export const en: Record<keyof typeof de, string> = {
   syncAuthFailed: "The access code was rejected. Reset the device in settings and enter it again.",
   resetDevice: "Reset device",
   confirmResetDevice: "Clear the access code and identity on this device? Tasks are kept.",
+  delegatedView: "Handed over",
+  createdByLabel: "Created by",
+  emptyDelegated: "You have not handed anything over",
+  delegatedDone: "Done",
+  delegatedOpen: "Open",
   overdue: "Overdue",
 };

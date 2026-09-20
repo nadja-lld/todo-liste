@@ -35,3 +35,17 @@ export function otherUser(userId: UserId): UserId {
 export function ownerOfTask(state: AppState, task: Task): UserId | null {
   return state.lists.find((list) => list.id === task.listId)?.owner ?? null;
 }
+
+/**
+ * Tasks this person created that now sit on the other person's list. They are
+ * invisible everywhere else, so handing one over would otherwise be the last
+ * you ever hear of it.
+ */
+export function delegatedBy(state: AppState, creator: UserId): Task[] {
+  const foreign = new Set(
+    liveLists(state)
+      .filter((list) => list.owner !== creator)
+      .map((list) => list.id),
+  );
+  return liveTasks(state).filter((task) => task.createdBy === creator && foreign.has(task.listId));
+}

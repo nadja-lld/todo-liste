@@ -1,8 +1,5 @@
+import { purgeExpired } from "./purge";
 import type { AppState, Task, TodoList, User } from "./types";
-
-/** How long a deletion must be remembered before it is safe to forget. */
-const TOMBSTONE_RETENTION_DAYS = 30;
-const TOMBSTONE_RETENTION_MS = TOMBSTONE_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 interface Versioned {
   id: string;
@@ -45,13 +42,6 @@ function mergeById<T extends Versioned>(local: T[], remote: T[]): T[] {
   return [...merged.values()];
 }
 
-function isExpiredTombstone(deletedAt: string | undefined, now: Date): boolean {
-  if (deletedAt === undefined) return false;
-  const at = Date.parse(deletedAt);
-  if (Number.isNaN(at)) return false;
-  return now.getTime() - at > TOMBSTONE_RETENTION_MS;
-}
-
 /**
  * Reconciles the document this device holds with the one the server holds.
  *
@@ -60,13 +50,11 @@ function isExpiredTombstone(deletedAt: string | undefined, now: Date): boolean {
  * list per person that is rare, but it is the one place data can go missing.
  */
 export function mergeState(local: AppState, remote: AppState, now: Date): AppState {
-  const users = mergeById<User>(local.users, remote.users);
-  const lists = mergeById<TodoList>(local.lists, remote.lists).filter(
-    (list) => !isExpiredTombstone(list.deletedAt, now),
-  );
-  const listIds = new Set(lists.map((list) => list.id));
-  const tasks = mergeById<Task>(local.tasks, remote.tasks).filter(
-    (task) => !isExpiredTombstone(task.deletedAt, now) && listIds.has(task.listId),
-  );
-  return { schemaVersion: local.schemaVersion, users, lists, tasks };
+  const merged: AppState = {
+    schemaVersion: local.schemaVersion,
+    users: mergeById<User>(local.users, remote.users),
+    lists: mergeById<TodoList>(local.lists, remote.lists),
+    tasks: mergeById<Task>(local.tasks, remote.tasks),
+  };
+  return purgeExpired(merged, now);
 }

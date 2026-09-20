@@ -1,7 +1,7 @@
 import type { TodoList } from "../domain/types";
 import { t } from "../i18n";
 
-export type ViewId = "today" | "tomorrow" | string;
+export type ViewId = "today" | "tomorrow" | "delegated" | string;
 
 interface Props {
   lists: TodoList[];
@@ -13,6 +13,7 @@ export function ListSwitcher({ lists, view, onSelect }: Props) {
   const entries: { id: ViewId; label: string }[] = [
     { id: "today", label: t("todayView") },
     { id: "tomorrow", label: t("tomorrowView") },
+    { id: "delegated", label: t("delegatedView") },
     ...lists.map((list) => ({ id: list.id, label: list.name })),
   ];
   return (
