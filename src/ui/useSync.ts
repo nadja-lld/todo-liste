@@ -29,12 +29,18 @@ export function useSync({ state, replace, storage, now, fetchImpl }: UseSyncArgs
   const enabled = baseUrl !== null && device.accessCode !== null && device.identity !== null;
 
   const [status, setStatus] = useState<SyncStatus>(enabled ? "syncing" : "disabled");
-  // Reading state through a ref keeps the sync callback stable, so the timers
-  // below are not torn down and rebuilt on every keystroke.
+  // Everything the callback reads goes through a ref, so `syncNow` keeps a
+  // stable identity. Callers hand us fresh closures on every render — App's
+  // `now` is a default parameter — and if any of them reached the dependency
+  // array, the effect below would re-run per render and sync in a loop.
   const stateRef = useRef(state);
   stateRef.current = state;
   const replaceRef = useRef(replace);
   replaceRef.current = replace;
+  const nowRef = useRef(now);
+  nowRef.current = now;
+  const fetchRef = useRef(fetchImpl);
+  fetchRef.current = fetchImpl;
   const running = useRef(false);
 
   const syncNow = useCallback(() => {
@@ -43,10 +49,10 @@ export function useSync({ state, replace, storage, now, fetchImpl }: UseSyncArgs
     running.current = true;
     setStatus("syncing");
 
-    const client = createSyncClient(baseUrl, device.accessCode, fetchImpl);
+    const client = createSyncClient(baseUrl, device.accessCode, fetchRef.current);
     const adopt = !loadDeviceSettings(storage).adopted;
 
-    runSyncCycle(client, stateRef.current, now(), adopt)
+    runSyncCycle(client, stateRef.current, nowRef.current(), adopt)
       .then((result) => {
         if (result.outcome === "conflict-exhausted") {
           setStatus("error");
@@ -63,7 +69,7 @@ export function useSync({ state, replace, storage, now, fetchImpl }: UseSyncArgs
       .finally(() => {
         running.current = false;
       });
-  }, [enabled, baseUrl, device.accessCode, fetchImpl, storage, now]);
+  }, [enabled, baseUrl, device.accessCode, storage]);
 
   // On mount, and whenever the app comes back to the foreground or online.
   useEffect(() => {

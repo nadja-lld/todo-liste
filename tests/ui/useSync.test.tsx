@@ -44,6 +44,15 @@ function respond(status: number, body: unknown): Response {
   });
 }
 
+/**
+ * Mirrors how App calls the hook: `now` is a default parameter there, so a new
+ * function identity arrives on every render. The hook must tolerate that.
+ */
+function UnstableNowProbe({ storage, state, replace, fetchImpl }: Omit<ProbeProps, "onStatus">) {
+  const sync = useSync({ state, replace, storage, now: () => NOW, fetchImpl });
+  return <span data-testid="status">{sync.status}</span>;
+}
+
 interface ProbeProps {
   storage: Storage;
   state: AppState;
@@ -198,5 +207,31 @@ describe("useSync", () => {
 
     release!(respond(200, { version: 0, state: null }));
     await waitFor(() => expect(view.getByTestId("status").textContent).toBe("idle"));
+  });
+
+  it("does not resync on every render when the caller passes a fresh now each time", async () => {
+    // A fresh Response per call, so a repeated cycle shows up as a call count
+    // rather than as a consumed-body error.
+    const fetchImpl = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(respond(200, { version: 0, state: null })));
+    const storage = configured({ [ADOPTED_KEY]: "1" });
+    const local = withTask(base(), "Lokal");
+
+    const view = render(
+      <UnstableNowProbe
+        storage={storage}
+        state={local}
+        replace={vi.fn()}
+        fetchImpl={fetchImpl as unknown as typeof fetch}
+      />,
+    );
+    await waitFor(() => expect(view.getByTestId("status").textContent).toBe("idle"));
+    const afterFirstCycle = fetchImpl.mock.calls.length;
+
+    // Nothing has changed and no trigger has fired, so no further request may go out.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(fetchImpl.mock.calls.length).toBe(afterFirstCycle);
+    expect(view.getByTestId("status").textContent).toBe("idle");
   });
 });
