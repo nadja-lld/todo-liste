@@ -33,8 +33,18 @@ export function useSync({ state, replace, storage, now, fetchImpl }: UseSyncArgs
   // stable identity. Callers hand us fresh closures on every render — App's
   // `now` is a default parameter — and if any of them reached the dependency
   // array, the effect below would re-run per render and sync in a loop.
+  // A state this hook produced is held here until it comes back through props.
+  // Re-renders in between (a status change is one) would otherwise reset the
+  // ref below to the state the component still shows, which right after an
+  // adoption is this device's throwaway scaffold.
+  const pendingRef = useRef<AppState | null>(null);
+  const lastPropRef = useRef(state);
+  if (lastPropRef.current !== state) {
+    lastPropRef.current = state;
+    pendingRef.current = null;
+  }
   const stateRef = useRef(state);
-  stateRef.current = state;
+  stateRef.current = pendingRef.current ?? state;
   const replaceRef = useRef(replace);
   replaceRef.current = replace;
   const nowRef = useRef(now);
@@ -59,7 +69,15 @@ export function useSync({ state, replace, storage, now, fetchImpl }: UseSyncArgs
           return;
         }
         markAdopted(storage);
-        if (result.outcome === "synced") replaceRef.current(result.state);
+        if (result.outcome === "synced") {
+          // Adopt into the ref before handing the state to the component. The
+          // re-render that carries it arrives later, and a cycle starting in
+          // between would otherwise still see this device's initial scaffold,
+          // no longer count as fresh, and merge those throwaway lists back in.
+          pendingRef.current = result.state;
+          stateRef.current = result.state;
+          replaceRef.current(result.state);
+        }
         setStatus("idle");
       })
       .catch((error: unknown) => {

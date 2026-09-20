@@ -209,6 +209,49 @@ describe("useSync", () => {
     await waitFor(() => expect(view.getByTestId("status").textContent).toBe("idle"));
   });
 
+  it("does not merge its own scaffold back in when a second cycle starts before the adopted state has rendered", async () => {
+    const server = withTask(base(), "Vom Server");
+    const scaffold = base();
+    const fetchImpl = vi
+      .fn()
+      .mockImplementation((_url: string, init?: RequestInit) =>
+        Promise.resolve(
+          init?.method === "PUT"
+            ? respond(200, { version: 4 })
+            : respond(200, { version: 3, state: server }),
+        ),
+      );
+    // `replace` deliberately does not feed the state back: that is the window
+    // between adopting and the re-render that carries the adopted document.
+    const replace = vi.fn();
+    const storage = configured();
+
+    const view = render(
+      <Probe
+        storage={storage}
+        state={scaffold}
+        replace={replace}
+        fetchImpl={fetchImpl as unknown as typeof fetch}
+        onStatus={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(view.getByTestId("status").textContent).toBe("idle"));
+    expect(replace).toHaveBeenCalledWith(server);
+
+    // A second trigger arrives while the component still renders the scaffold.
+    document.dispatchEvent(new Event("visibilitychange"));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const puts = fetchImpl.mock.calls.filter((call) => call[1]?.method === "PUT");
+    for (const put of puts) {
+      const sent = JSON.parse(put[1].body as string).state;
+      const inboxes = sent.lists.filter(
+        (l: { owner: string; deletedAt?: string }) => l.owner === "b" && !l.deletedAt,
+      );
+      expect(inboxes).toHaveLength(1);
+    }
+  });
+
   it("does not resync on every render when the caller passes a fresh now each time", async () => {
     // A fresh Response per call, so a repeated cycle shows up as a call count
     // rather than as a consumed-body error.
