@@ -264,3 +264,135 @@ describe("App", () => {
     expect(screen.getByText("Morgen ist nichts fällig")).toBeTruthy();
   });
 });
+
+describe("App with two people", () => {
+  beforeEach(() => setLanguage("de"));
+  afterEach(cleanup);
+
+  /** A stored document where each person owns one named list. */
+  function twoPersonState() {
+    const at = "2026-09-14T07:00:00.000Z";
+    return {
+      schemaVersion: 2,
+      users: [
+        { id: "a", name: "Nadja", updatedAt: at },
+        { id: "b", name: "Chris", updatedAt: at },
+      ],
+      lists: [
+        { id: "la", name: "Nadjas Liste", position: 0, owner: "a", updatedAt: at },
+        { id: "lb", name: "Chris' Liste", position: 1, owner: "b", updatedAt: at },
+      ],
+      tasks: [
+        {
+          id: "t-a",
+          listId: "la",
+          title: "Meine Aufgabe",
+          priority: "medium",
+          recurrence: "none",
+          createdAt: at,
+          createdBy: "a",
+          seenAt: at,
+          updatedAt: at,
+        },
+        {
+          id: "t-b",
+          listId: "lb",
+          title: "Fremde Aufgabe",
+          priority: "medium",
+          recurrence: "none",
+          createdAt: at,
+          createdBy: "b",
+          seenAt: at,
+          updatedAt: at,
+        },
+      ],
+    };
+  }
+
+  function storedAs(identity: "a" | "b") {
+    return fakeStorage({
+      [STATE_KEY]: JSON.stringify(twoPersonState()),
+      "todo.identity": identity,
+      "todo.accessCode": "s3cret",
+    });
+  }
+
+  it("shows only my own lists in the switcher", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    expect(screen.getByRole("tab", { name: "Nadjas Liste" })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "Chris' Liste" })).toBeNull();
+  });
+
+  it("shows only my own tasks", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    expect(screen.getByText("Meine Aufgabe")).toBeTruthy();
+    expect(screen.queryByText("Fremde Aufgabe")).toBeNull();
+  });
+
+  it("shows the other person's view when this device belongs to them", () => {
+    render(<App storage={storedAs("b")} now={now} />);
+    expect(screen.getByText("Fremde Aufgabe")).toBeTruthy();
+    expect(screen.queryByText("Meine Aufgabe")).toBeNull();
+  });
+
+  it("puts a delegated task on the other person's list, not mine", () => {
+    const storage = storedAs("a");
+    render(<App storage={storage} now={now} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Für Chris" }));
+    const input = screen.getByPlaceholderText("Neue Aufgabe");
+    fireEvent.input(input, { target: { value: "Müll rausbringen" } });
+    fireEvent.submit(input.closest("form")!);
+
+    expect(screen.queryByText("Müll rausbringen")).toBeNull();
+    const saved = JSON.parse(storage.getItem(STATE_KEY)!);
+    const created = saved.tasks.find(
+      (task: { title: string }) => task.title === "Müll rausbringen",
+    );
+    expect(created.listId).toBe("lb");
+    expect(created.createdBy).toBe("a");
+    expect(created.seenAt).toBeUndefined();
+  });
+
+  it("returns the target to me after a delegated task is added", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Für Chris" }));
+    const input = screen.getByPlaceholderText("Neue Aufgabe");
+    fireEvent.input(input, { target: { value: "Müll" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(screen.getByRole("radio", { name: "Für mich" }).getAttribute("aria-checked")).toBe(
+      "true",
+    );
+  });
+
+  it("marks a task the other person delegated to me and clears it once opened", () => {
+    const state = twoPersonState();
+    state.tasks.push({
+      id: "t-new",
+      listId: "la",
+      title: "Von Chris",
+      priority: "medium",
+      recurrence: "none",
+      createdAt: "2026-09-14T07:30:00.000Z",
+      createdBy: "b",
+      updatedAt: "2026-09-14T07:30:00.000Z",
+    } as (typeof state.tasks)[number]);
+    const storage = fakeStorage({
+      [STATE_KEY]: JSON.stringify(state),
+      "todo.identity": "a",
+      "todo.accessCode": "s3cret",
+    });
+    render(<App storage={storage} now={now} />);
+
+    expect(screen.getByText("Neu von Chris")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /^Von Chris/ }));
+    expect(screen.queryByText("Neu von Chris")).toBeNull();
+  });
+
+  it("never marks a task I created for myself", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    const input = screen.getByPlaceholderText("Neue Aufgabe");
+    fireEvent.input(input, { target: { value: "Selbst angelegt" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(screen.queryByText(/^Neu von/)).toBeNull();
+  });
+});
