@@ -2,6 +2,8 @@
   --accent: #3b6ea5;
   --bg: #f2f2f7;
   --surface: #ffffff;
+  --sheet: #f2f2f7;
+  --sheet-edge: #d1d1d6;
   --text: #1c1c1e;
   --text-muted: #6e6e73;
   --border: #d1d1d6;
@@ -23,10 +25,14 @@
   :root {
     --accent: #6ea0d8;
     --bg: #000000;
-    --surface: #1c1c1e;
+    /* Rows and inputs sit above the sheet, so they cannot share its colour. */
+    --surface: #2c2c2e;
+    --sheet: #1c1c1e;
+    --sheet-edge: #6b6b70;
     --text: #f2f2f7;
-    --text-muted: #8e8e93;
-    --border: #3a3a3c;
+    /* 4.27:1 on the new row colour was below the 4.5 floor. */
+    --text-muted: #a1a1a6;
+    --border: #48484a;
     --danger: #ff6b5e;
     --warning-bg: #3a2e00;
     --warning-fg: #ffd66b;
@@ -284,7 +290,11 @@ textarea:focus-visible {
   width: 100%;
   max-height: 90dvh;
   overflow-y: auto;
-  background: var(--bg);
+  background: var(--sheet);
+  /* In dark mode the page and the dimmed backdrop are both black, so without
+     an explicit edge the sheet has no visible boundary at all. */
+  border-top: 1px solid var(--sheet-edge);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / 45%);
   border-radius: var(--radius) var(--radius) 0 0;
   padding-bottom: calc(var(--space-2) + env(safe-area-inset-bottom));
 }
@@ -295,7 +305,8 @@ textarea:focus-visible {
   padding: var(--space-1) var(--space-2);
   position: sticky;
   top: 0;
-  background: var(--bg);
+  background: var(--sheet);
+  border-bottom: 1px solid var(--border);
 }
 .sheet-header h2 {
   margin: 0;
@@ -354,7 +365,7 @@ textarea:focus-visible {
   font-weight: 600;
 }
 .section-title {
-  margin: var(--space-1) 0 0;
+  margin: var(--space-2) 0 0;
   font-size: 13px;
   color: var(--text-muted);
   text-transform: uppercase;

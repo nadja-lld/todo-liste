@@ -214,13 +214,7 @@ export function App({ storage, now = () => new Date() }: AppProps) {
           storage={effectiveStorage}
           syncStatus={sync.status}
           now={now}
-          today={today}
           onUpdate={app.update}
-          onReplace={(next) => {
-            app.replace(next);
-            setView(listsOf(next, identity)[0]?.id ?? "today");
-            setSelectedTaskId(null);
-          }}
           onClose={() => setSettingsOpen(false)}
         />
       )}

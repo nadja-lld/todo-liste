@@ -22,7 +22,9 @@ describe("t", () => {
   });
 
   it("replaces placeholders", () => {
-    expect(t("importPreview", { lists: 2, tasks: 5 })).toBe("2 Listen und 5 Aufgaben ersetzen?");
+    expect(t("confirmDeleteList", { name: "Einkauf", count: 5 })).toBe(
+      "Liste \u201eEinkauf\u201c mit 5 Aufgaben löschen?",
+    );
   });
 });
 

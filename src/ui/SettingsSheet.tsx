@@ -1,28 +1,11 @@
 import { useState } from "preact/hooks";
-import { exportFileName, parseImport, serializeState } from "../domain/exportImport";
 import { listsOf, tasksOf } from "../domain/selectors";
 import { addList, clearCompleted, deleteList, moveList, renameList } from "../domain/state";
 import type { AppState, UserId } from "../domain/types";
 import { t } from "../i18n";
 import { clearDeviceSettings } from "../storage/deviceSettings";
 import { syncStatusKey, type SyncStatus } from "../sync/status";
-import { userNames } from "./userNames";
 import { Sheet } from "./Sheet";
-import { shareOrDownloadFile } from "./share";
-
-// jsdom (as used by the test environment) does not implement File.prototype.text,
-// and `new Response(file).text()` does not read the file's Blob contents there
-// either (it stringifies the File instance instead). Feature-detect the native
-// method for real browsers, falling back to FileReader everywhere else.
-function readFileText(file: File): Promise<string> {
-  if (typeof file.text === "function") return file.text();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file"));
-    reader.readAsText(file);
-  });
-}
 
 interface Props {
   state: AppState;
@@ -30,14 +13,11 @@ interface Props {
   storage: Storage;
   syncStatus: SyncStatus;
   now: () => Date;
-  today: string;
   onUpdate: (fn: (state: AppState) => AppState) => void;
-  onReplace: (state: AppState) => void;
   onClose: () => void;
   confirm?: (message: string) => boolean;
   prompt?: (message: string, defaultValue: string) => string | null;
   notify?: (message: string) => void;
-  exportFile?: (fileName: string, content: string) => Promise<void>;
 }
 
 export function SettingsSheet({
@@ -46,42 +26,17 @@ export function SettingsSheet({
   storage,
   syncStatus,
   now,
-  today,
   onUpdate,
-  onReplace,
   onClose,
   confirm = (message) => window.confirm(message),
   prompt = (message, defaultValue) => window.prompt(message, defaultValue),
   notify = (message) => window.alert(message),
-  exportFile = (fileName, content) => shareOrDownloadFile(fileName, content, "application/json"),
 }: Props) {
   const [newListName, setNewListName] = useState("");
   const lists = listsOf(state, identity);
   const ownTasks = tasksOf(state, identity);
   const completedCount = ownTasks.filter((task) => task.completedAt !== undefined).length;
   const taskCount = (listId: string) => ownTasks.filter((task) => task.listId === listId).length;
-
-  const handleImport = async (input: HTMLInputElement) => {
-    const file = input.files?.[0];
-    input.value = "";
-    if (!file) return;
-    let text: string;
-    try {
-      text = await readFileText(file);
-    } catch (error) {
-      notify(t("importInvalid", { error: String(error instanceof Error ? error.message : error) }));
-      return;
-    }
-    const result = parseImport(text, userNames(), now());
-    if (!result.ok) {
-      notify(t("importInvalid", { error: result.error }));
-      return;
-    }
-    if (confirm(t("importPreview", { lists: result.listCount, tasks: result.taskCount }))) {
-      onReplace(result.state);
-      notify(t("importDone"));
-    }
-  };
 
   return (
     <Sheet title={t("settings")} onClose={onClose}>
@@ -177,21 +132,6 @@ export function SettingsSheet({
       </button>
 
       <h3 class="section-title">{t("data")}</h3>
-      <button
-        type="button"
-        class="secondary-button"
-        onClick={() => void exportFile(exportFileName(today), serializeState(state))}
-      >
-        {t("exportData")}
-      </button>
-      <label class="secondary-button file-button">
-        {t("importData")}
-        <input
-          type="file"
-          accept="application/json,.json"
-          onChange={(e) => void handleImport(e.target as HTMLInputElement)}
-        />
-      </label>
       <button
         type="button"
         class="secondary-button"

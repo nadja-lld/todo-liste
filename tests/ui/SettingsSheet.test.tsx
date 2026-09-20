@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { inboxListId, listsOf, liveTasks } from "../../src/domain/selectors";
 import { addList, addTask, createInitialState, toggleTask } from "../../src/domain/state";
@@ -39,10 +39,6 @@ function harness(initial: AppState, overrides: Partial<Parameters<typeof Setting
     current = fn(current);
     rerender();
   };
-  const onReplace = (s: AppState) => {
-    current = s;
-    rerender();
-  };
   const props = () => ({
     state: current,
     identity: "a" as const,
@@ -51,12 +47,10 @@ function harness(initial: AppState, overrides: Partial<Parameters<typeof Setting
     now: () => now,
     today: "2026-09-14",
     onUpdate,
-    onReplace,
     onClose: vi.fn(),
     confirm: () => true,
     prompt: () => null,
     notify: vi.fn(),
-    exportFile: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   });
   const view = render(<SettingsSheet {...props()} />);
@@ -107,50 +101,6 @@ describe("SettingsSheet", () => {
     const h = harness(state);
     fireEvent.click(screen.getByRole("button", { name: "Erledigte Aufgaben löschen" }));
     expect(liveTasks(h.state)).toEqual([]);
-  });
-
-  it("exports the state as a dated JSON file", async () => {
-    const exportFile = vi.fn().mockResolvedValue(undefined);
-    harness(initial("A"), { exportFile });
-    fireEvent.click(screen.getByRole("button", { name: "Als JSON exportieren" }));
-    await waitFor(() => expect(exportFile).toHaveBeenCalled());
-    const [fileName, content] = exportFile.mock.calls[0]!;
-    expect(fileName).toBe("todos-2026-09-14.json");
-    expect(JSON.parse(content).lists[0].name).toBe("A");
-  });
-
-  it("imports a valid file after confirmation", async () => {
-    const imported = initial("Importiert");
-    const h = harness(initial("A"));
-    const file = new File([JSON.stringify(imported)], "todos.json", { type: "application/json" });
-    const input = screen.getByLabelText("JSON importieren") as HTMLInputElement;
-    Object.defineProperty(input, "files", { value: [file] });
-    fireEvent.change(input);
-    await waitFor(() => expect(ownListNames(h.state)).toEqual(["Importiert"]));
-  });
-
-  it("rejects an invalid file and keeps the state", async () => {
-    const notify = vi.fn();
-    const h = harness(initial("A"), { notify });
-    const file = new File(["{broken"], "todos.json", { type: "application/json" });
-    const input = screen.getByLabelText("JSON importieren") as HTMLInputElement;
-    Object.defineProperty(input, "files", { value: [file] });
-    fireEvent.change(input);
-    await waitFor(() =>
-      expect(notify).toHaveBeenCalledWith(expect.stringContaining("invalid JSON")),
-    );
-    expect(ownListNames(h.state)).toEqual(["A"]);
-  });
-
-  it("notifies and keeps the state when the file cannot be read", async () => {
-    const notify = vi.fn();
-    const h = harness(initial("A"), { notify });
-    const unreadableFile = { text: () => Promise.reject(new Error("unreadable")) };
-    const input = screen.getByLabelText("JSON importieren") as HTMLInputElement;
-    Object.defineProperty(input, "files", { value: [unreadableFile] });
-    fireEvent.change(input);
-    await waitFor(() => expect(notify).toHaveBeenCalledWith(expect.stringContaining("unreadable")));
-    expect(ownListNames(h.state)).toEqual(["A"]);
   });
 
   it("shows the sync status", () => {

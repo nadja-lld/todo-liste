@@ -31,7 +31,7 @@ Deployed to GitHub Pages from `main`; the worker deploys separately from `server
 
 ```
 src/domain/    pure TS, no browser APIs: types, dates, recurrence, sorting, state
-               reducers, selectors, merge, schema migration, export/import
+               reducers, selectors, merge, retention, schema migration
 src/storage/   loadState/saveState around localStorage, corrupt-data backup,
                device-local settings (identity, access code)
 src/sync/      HTTP client and one fetch-merge-push cycle; no timers, no UI

@@ -14,7 +14,6 @@ läuft sie unverändert nur auf dem Gerät.
 - Mehrere Listen, Ansicht „Heute" für fällige und überfällige Aufgaben
 - Fälligkeitsdatum, Priorität (hoch/mittel/niedrig), Wiederholung (täglich/wöchentlich/monatlich)
 - Aufgaben für die zweite Person anlegen; dort als „Neu von …" markiert, bis sie geöffnet werden
-- Export und Import aller Daten als JSON
 - Offline nutzbar, Dark Mode
 
 ## Installation auf dem iPhone
