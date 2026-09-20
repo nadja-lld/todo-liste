@@ -1,7 +1,7 @@
 export const de = {
   appTitle: "To-Do",
-  defaultUserAName: "Person 1",
-  defaultUserBName: "Person 2",
+  userAName: "Nadja",
+  userBName: "Gerald",
   defaultListName: "Aufgaben",
   today: "Heute",
   tomorrow: "Morgen",
@@ -70,8 +70,6 @@ export const de = {
   startUsing: "Loslegen",
   assignee: "Zu erledigen von",
   newFrom: "Neu von {name}",
-  people: "Personen",
-  personName: "Name von {name}",
   syncStatus: "Abgleich",
   syncStatusSynced: "Abgeglichen",
   syncStatusSyncing: "Wird abgeglichen …",

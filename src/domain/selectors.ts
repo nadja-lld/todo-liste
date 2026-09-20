@@ -27,10 +27,6 @@ export function inboxListId(state: AppState, owner: UserId): string | null {
   return listsOf(state, owner)[0]?.id ?? null;
 }
 
-export function userName(state: AppState, userId: UserId): string {
-  return state.users.find((user) => user.id === userId)?.name ?? userId;
-}
-
 export function otherUser(userId: UserId): UserId {
   return userId === "a" ? "b" : "a";
 }

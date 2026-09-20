@@ -51,6 +51,10 @@ event listeners belong in `useSync`, which is what keeps the conflict path testa
   Every reducer stamps `updatedAt`; without it the change loses the next merge.
 - Deletions are tombstones (`deletedAt`), never removals. Read through the selectors in
   `src/domain/selectors.ts` (`liveLists`, `tasksOf`, …) so tombstones stay out of the UI.
+- The two people and their names are fixed in code: ids `"a"`/`"b"` in `USER_IDS`,
+  names in `src/ui/userNames.ts` via the i18n keys `userAName`/`userBName`. The
+  `users` array in the stored document is a leftover from when names were editable;
+  nothing reads it any more, and removing it needs a schema bump with a migration.
 - A task belongs to whoever owns its list. There is no owner field on `Task`.
   Handing one over means moving it to the other person's inbox; that is what the
   "assignee" field in `TaskDetailSheet` does. New tasks are always the creator's.

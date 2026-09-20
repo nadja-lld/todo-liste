@@ -225,15 +225,3 @@ export function deleteList(state: AppState, listId: string, now: Date): AppState
     ),
   };
 }
-
-export function renameUser(state: AppState, userId: UserId, name: string, now: Date): AppState {
-  const trimmed = name.trim();
-  if (trimmed === "") return state;
-  const at = stamp(now);
-  return {
-    ...state,
-    users: state.users.map((user) =>
-      user.id === userId ? { ...user, name: trimmed, updatedAt: at } : user,
-    ),
-  };
-}

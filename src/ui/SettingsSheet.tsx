@@ -1,18 +1,12 @@
 import { useState } from "preact/hooks";
 import { exportFileName, parseImport, serializeState } from "../domain/exportImport";
-import { listsOf, tasksOf, userName } from "../domain/selectors";
-import {
-  addList,
-  clearCompleted,
-  deleteList,
-  moveList,
-  renameList,
-  renameUser,
-} from "../domain/state";
-import { USER_IDS, type AppState, type UserId } from "../domain/types";
+import { listsOf, tasksOf } from "../domain/selectors";
+import { addList, clearCompleted, deleteList, moveList, renameList } from "../domain/state";
+import type { AppState, UserId } from "../domain/types";
 import { t } from "../i18n";
 import { clearDeviceSettings } from "../storage/deviceSettings";
 import { syncStatusKey, type SyncStatus } from "../sync/status";
+import { userNames } from "./userNames";
 import { Sheet } from "./Sheet";
 import { shareOrDownloadFile } from "./share";
 
@@ -78,7 +72,7 @@ export function SettingsSheet({
       notify(t("importInvalid", { error: String(error instanceof Error ? error.message : error) }));
       return;
     }
-    const result = parseImport(text, { a: t("defaultUserAName"), b: t("defaultUserBName") }, now());
+    const result = parseImport(text, userNames(), now());
     if (!result.ok) {
       notify(t("importInvalid", { error: result.error }));
       return;
@@ -166,27 +160,6 @@ export function SettingsSheet({
           {t("addList")}
         </button>
       </form>
-
-      <h3 class="section-title">{t("people")}</h3>
-      <ul class="settings-lists">
-        {USER_IDS.map((id) => (
-          <li key={id} class="settings-list-row">
-            <label class="field field--inline">
-              <span>{t("personName", { name: userName(state, id) })}</span>
-              <input
-                type="text"
-                value={userName(state, id)}
-                aria-label={t("personName", { name: userName(state, id) })}
-                onChange={(event) =>
-                  onUpdate((s) =>
-                    renameUser(s, id, (event.target as HTMLInputElement).value, now()),
-                  )
-                }
-              />
-            </label>
-          </li>
-        ))}
-      </ul>
 
       <h3 class="section-title">{t("syncStatus")}</h3>
       <p class="settings-status">{t(syncStatusKey(syncStatus))}</p>

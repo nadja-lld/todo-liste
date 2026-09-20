@@ -153,13 +153,6 @@ describe("SettingsSheet", () => {
     expect(ownListNames(h.state)).toEqual(["A"]);
   });
 
-  it("renames a person", () => {
-    const h = harness(initial("A"));
-    const input = screen.getByLabelText("Name von Person 2") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "Chris" } });
-    expect(h.state.users.find((u) => u.id === "b")!.name).toBe("Chris");
-  });
-
   it("shows the sync status", () => {
     harness(initial("A"), { syncStatus: "offline" as const });
     expect(screen.getByText("Offline — wird nachgeholt")).toBeTruthy();

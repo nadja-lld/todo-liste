@@ -2,8 +2,8 @@ import type { de } from "./de";
 
 export const en: Record<keyof typeof de, string> = {
   appTitle: "To-Do",
-  defaultUserAName: "Person 1",
-  defaultUserBName: "Person 2",
+  userAName: "Nadja",
+  userBName: "Gerald",
   defaultListName: "Tasks",
   today: "Today",
   tomorrow: "Tomorrow",
@@ -71,8 +71,6 @@ export const en: Record<keyof typeof de, string> = {
   startUsing: "Get started",
   assignee: "To be done by",
   newFrom: "New from {name}",
-  people: "People",
-  personName: "Name of {name}",
   syncStatus: "Sync",
   syncStatusSynced: "Synced",
   syncStatusSyncing: "Syncing …",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inboxListId, listsOf, liveLists, liveTasks, userName } from "../../src/domain/selectors";
+import { inboxListId, listsOf, liveLists, liveTasks } from "../../src/domain/selectors";
 import {
   addList,
   addTask,
@@ -10,7 +10,6 @@ import {
   markTaskSeen,
   moveList,
   renameList,
-  renameUser,
   toggleTask,
   updateTask,
 } from "../../src/domain/state";
@@ -341,19 +340,6 @@ describe("lists", () => {
     const idB = listsOf(state, "a")[1]!.id;
     state = deleteList(state, idB, now);
     expect(liveLists(state).map((l) => l.name)).toEqual(["A", "A"]);
-  });
-});
-
-describe("users", () => {
-  it("renames a person", () => {
-    const state = renameUser(initial(), "b", "  Chris  ", later);
-    expect(userName(state, "b")).toBe("Chris");
-    expect(state.users.find((u) => u.id === "b")!.updatedAt).toBe(later.toISOString());
-  });
-
-  it("ignores an empty name", () => {
-    const start = initial();
-    expect(renameUser(start, "b", "   ", now)).toBe(start);
   });
 });
 

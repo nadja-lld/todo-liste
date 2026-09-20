@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { addDays, dueBucket, todayIso } from "../domain/dates";
-import { inboxListId, listsOf, tasksOf, userName } from "../domain/selectors";
+import { inboxListId, listsOf, tasksOf } from "../domain/selectors";
 import { addTask, deleteTask, markTaskSeen, toggleTask, updateTask } from "../domain/state";
 import type { Task, UserId } from "../domain/types";
 import { t } from "../i18n";
@@ -18,6 +18,7 @@ import { Onboarding } from "./Onboarding";
 import { SettingsSheet } from "./SettingsSheet";
 import { TaskDetailSheet } from "./TaskDetailSheet";
 import { TaskList } from "./TaskList";
+import { userName, userNames } from "./userNames";
 import { useAppState } from "./useAppState";
 import { useSync } from "./useSync";
 
@@ -79,12 +80,7 @@ export function App({ storage, now = () => new Date() }: AppProps) {
   );
 
   if (syncUrl !== null && device.identity === null) {
-    return (
-      <Onboarding
-        names={{ a: userName(app.state, "a"), b: userName(app.state, "b") }}
-        onDone={completeOnboarding}
-      />
-    );
+    return <Onboarding names={userNames()} onDone={completeOnboarding} />;
   }
 
   const ownTasks = tasksOf(app.state, identity);
@@ -101,9 +97,7 @@ export function App({ storage, now = () => new Date() }: AppProps) {
   const selectedTask = ownTasks.find((task) => task.id === selectedTaskId) ?? null;
 
   const newFromName = (task: Task): string | undefined =>
-    task.createdBy !== identity && task.seenAt === undefined
-      ? userName(app.state, task.createdBy)
-      : undefined;
+    task.createdBy !== identity && task.seenAt === undefined ? userName(task.createdBy) : undefined;
 
   const openTask = (taskId: string) => {
     setSelectedTaskId(taskId);
@@ -171,7 +165,7 @@ export function App({ storage, now = () => new Date() }: AppProps) {
         <TaskDetailSheet
           task={selectedTask}
           lists={lists}
-          userNames={{ a: userName(app.state, "a"), b: userName(app.state, "b") }}
+          userNames={userNames()}
           assignedTo={identity}
           onAssign={(taskId, userId) => {
             if (userId === identity) return;

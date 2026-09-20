@@ -414,9 +414,9 @@ describe("App with two people", () => {
     });
     render(<App storage={storage} now={now} />);
 
-    expect(screen.getByText("Neu von Chris")).toBeTruthy();
+    expect(screen.getByText("Neu von Gerald")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /^Von Chris/ }));
-    expect(screen.queryByText("Neu von Chris")).toBeNull();
+    expect(screen.queryByText("Neu von Gerald")).toBeNull();
   });
 
   it("never marks a task I created for myself", () => {
