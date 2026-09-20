@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sortOpenTasks, splitTasks } from "../../src/domain/sorting";
+import { sortOpenTasks, splitDelegated, splitTasks } from "../../src/domain/sorting";
 import type { Task } from "../../src/domain/types";
 
 function task(overrides: Partial<Task> & { id: string }): Task {
@@ -84,5 +84,38 @@ describe("splitTasks", () => {
     const { open, completed } = splitTasks(tasks, today);
     expect(open).toEqual([]);
     expect(completed.map((t) => t.id)).toEqual(["today"]);
+  });
+});
+
+describe("splitDelegated", () => {
+  const done = (id: string, completedAt: string) => task({ id, completedAt });
+
+  it("keeps open tasks", () => {
+    const result = splitDelegated([task({ id: "offen" })], today);
+    expect(result.open.map((t) => t.id)).toEqual(["offen"]);
+    expect(result.done).toEqual([]);
+  });
+
+  it("shows a task finished today", () => {
+    const result = splitDelegated([done("heute", "2026-09-14T08:00:00.000Z")], today);
+    expect(result.done.map((t) => t.id)).toEqual(["heute"]);
+  });
+
+  it("shows a task finished within the last seven days", () => {
+    const result = splitDelegated([done("neulich", "2026-09-09T08:00:00.000Z")], today);
+    expect(result.done.map((t) => t.id)).toEqual(["neulich"]);
+  });
+
+  it("hides a task finished longer ago", () => {
+    const result = splitDelegated([done("alt", "2026-09-01T08:00:00.000Z")], today);
+    expect(result.done).toEqual([]);
+  });
+
+  it("puts the most recently finished first", () => {
+    const result = splitDelegated(
+      [done("aelter", "2026-09-10T08:00:00.000Z"), done("neuer", "2026-09-13T08:00:00.000Z")],
+      today,
+    );
+    expect(result.done.map((t) => t.id)).toEqual(["neuer", "aelter"]);
   });
 });

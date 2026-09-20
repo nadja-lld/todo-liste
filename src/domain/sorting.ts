@@ -1,4 +1,4 @@
-import { dueBucket, isoDateOfTimestamp, type DueBucket } from "./dates";
+import { addDays, dueBucket, isoDateOfTimestamp, type DueBucket } from "./dates";
 import type { Priority, Task } from "./types";
 
 const BUCKET_ORDER: Record<DueBucket, number> = { overdue: 0, today: 1, future: 2, none: 3 };
@@ -30,4 +30,25 @@ export function splitTasks(tasks: Task[], today: string): { open: Task[]; comple
     else if (isoDateOfTimestamp(task.completedAt) === today) completed.push(task);
   }
   return { open, completed };
+}
+
+/** How long a finished hand-over stays worth looking at. */
+export const DELEGATED_DONE_DAYS = 7;
+
+/**
+ * Splits the handed-over view. Finished items stay around longer than the daily
+ * recap does — "did he do the thing I asked on Monday?" is a question you ask on
+ * Wednesday — but not for the full retention period, or the view turns into a
+ * graveyard that buries the open items.
+ */
+export function splitDelegated(tasks: Task[], today: string): { open: Task[]; done: Task[] } {
+  const cutoff = addDays(today, -DELEGATED_DONE_DAYS);
+  const open: Task[] = [];
+  const done: Task[] = [];
+  for (const task of tasks) {
+    if (task.completedAt === undefined) open.push(task);
+    else if (isoDateOfTimestamp(task.completedAt) >= cutoff) done.push(task);
+  }
+  done.sort((a, b) => compareStrings(b.completedAt ?? "", a.completedAt ?? ""));
+  return { open, done };
 }

@@ -485,4 +485,44 @@ describe("App with two people", () => {
     const line = screen.getByText("Angelegt von").closest("p");
     expect(line?.textContent).toContain("Nadja");
   });
+
+  it("collapses finished hand-overs and drops them after a week", () => {
+    const state = twoPersonState();
+    const handed = (id: string, title: string, completedAt?: string) =>
+      ({
+        id,
+        listId: "lb",
+        title,
+        priority: "medium",
+        recurrence: "none",
+        createdAt: "2026-09-01T07:00:00.000Z",
+        createdBy: "a",
+        updatedAt: "2026-09-01T07:00:00.000Z",
+        ...(completedAt ? { completedAt } : {}),
+      }) as (typeof state.tasks)[number];
+    state.tasks.push(handed("t-offen", "Noch offen"));
+    state.tasks.push(handed("t-neu", "Neulich erledigt", "2026-09-10T08:00:00.000Z"));
+    state.tasks.push(handed("t-alt", "Lange erledigt", "2026-09-01T08:00:00.000Z"));
+
+    render(
+      <App
+        storage={fakeStorage({
+          [STATE_KEY]: JSON.stringify(state),
+          "todo.identity": "a",
+          "todo.accessCode": "s3cret",
+        })}
+        now={now}
+      />,
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Vergeben" }));
+
+    // Open ones stand alone; recent finishes hide behind a closed section.
+    expect(screen.getByText("Noch offen")).toBeTruthy();
+    const section = screen.getByText("Erledigt (1)").closest("details") as HTMLDetailsElement;
+    expect(section.open).toBe(false);
+    expect(screen.getByText("Neulich erledigt")).toBeTruthy();
+
+    // Anything finished more than a week ago is gone from the view.
+    expect(screen.queryByText("Lange erledigt")).toBeNull();
+  });
 });

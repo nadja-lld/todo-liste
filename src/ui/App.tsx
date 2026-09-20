@@ -68,6 +68,7 @@ export function App({ storage, now = () => new Date() }: AppProps) {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showDelegatedCompleted, setShowDelegatedCompleted] = useState(false);
   const today = todayIso(now());
   const tomorrow = addDays(today, 1);
 
@@ -140,6 +141,8 @@ export function App({ storage, now = () => new Date() }: AppProps) {
           tasks={delegatedBy(app.state, identity)}
           today={today}
           assigneeName={userName(other)}
+          showCompleted={showDelegatedCompleted}
+          onShowCompletedChange={setShowDelegatedCompleted}
         />
       ) : (
         <TaskList
