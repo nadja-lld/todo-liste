@@ -3,13 +3,11 @@ import { listsOf, tasksOf } from "../domain/selectors";
 import { addList, clearCompleted, deleteList, moveList, renameList } from "../domain/state";
 import type { AppState, UserId } from "../domain/types";
 import { t } from "../i18n";
-import { syncStatusKey, type SyncStatus } from "../sync/status";
 import { Sheet } from "./Sheet";
 
 interface Props {
   state: AppState;
   identity: UserId;
-  syncStatus: SyncStatus;
   now: () => Date;
   onUpdate: (fn: (state: AppState) => AppState) => void;
   onClose: () => void;
@@ -21,7 +19,6 @@ interface Props {
 export function SettingsSheet({
   state,
   identity,
-  syncStatus,
   now,
   onUpdate,
   onClose,
@@ -113,10 +110,6 @@ export function SettingsSheet({
         </button>
       </form>
 
-      <h3 class="section-title section-title--row">
-        <span>{t("syncStatus")}</span>
-        <span class="section-title__value">{t(syncStatusKey(syncStatus))}</span>
-      </h3>
       <button
         type="button"
         class="secondary-button"

@@ -28,7 +28,6 @@ function harness(initial: AppState, overrides: Partial<Parameters<typeof Setting
   const props = () => ({
     state: current,
     identity: "a" as const,
-    syncStatus: "idle" as const,
     now: () => now,
     today: "2026-09-14",
     onUpdate,
@@ -88,15 +87,15 @@ describe("SettingsSheet", () => {
     expect(liveTasks(h.state)).toEqual([]);
   });
 
-  it("shows the sync status on the heading line", () => {
-    harness(initial("A"), { syncStatus: "offline" as const });
-    const heading = screen.getByText("Status").closest("h3");
-    expect(heading?.textContent).toBe("StatusOffline — wird nachgeholt");
-  });
-
-  it("has no Daten heading above the single button", () => {
+  it("holds nothing but lists and the completed-clearing button", () => {
     harness(initial("A"));
     expect(screen.queryByText("Daten")).toBeNull();
+    expect(screen.queryByText("Status")).toBeNull();
+    // The sheet's own title plus one section, nothing else.
+    expect(screen.getAllByRole("heading").map((h) => h.textContent)).toEqual([
+      "Einstellungen",
+      "Listen",
+    ]);
     expect(screen.getByRole("button", { name: "Erledigte Aufgaben löschen" })).toBeTruthy();
   });
 

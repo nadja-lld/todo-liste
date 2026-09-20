@@ -12,7 +12,7 @@ import {
   syncBaseUrl,
 } from "../storage/deviceSettings";
 import { resolveStorage } from "../storage/resolveStorage";
-import { syncStatusKey, type SyncStatus } from "../sync/status";
+import { needsAttention, syncStatusKey } from "../sync/status";
 import { AddTaskBar } from "./AddTaskBar";
 import { DelegatedList } from "./DelegatedList";
 import { ListSwitcher, type ViewId } from "./ListSwitcher";
@@ -23,11 +23,6 @@ import { TaskList } from "./TaskList";
 import { userName, userNames } from "./userNames";
 import { useAppState } from "./useAppState";
 import { useSync } from "./useSync";
-
-/** Statuses worth taking space in the header for. */
-function needsAttention(status: SyncStatus): boolean {
-  return status === "offline" || status === "error" || status === "auth-error";
-}
 
 function isOverviewView(view: ViewId): boolean {
   return view === "today" || view === "tomorrow" || view === "delegated";
@@ -224,7 +219,6 @@ export function App({ storage, now = () => new Date() }: AppProps) {
         <SettingsSheet
           state={app.state}
           identity={identity}
-          syncStatus={sync.status}
           now={now}
           onUpdate={app.update}
           onClose={() => setSettingsOpen(false)}
