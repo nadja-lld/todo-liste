@@ -459,12 +459,13 @@ textarea:focus-visible {
 .sync-status {
   margin-left: auto;
   margin-right: var(--space-1);
-  color: var(--text-muted);
   font-size: 0.8rem;
 }
-.sync-status--error,
-.sync-status--auth-error {
+.sync-status__problem {
   color: var(--danger);
+}
+.sync-status--offline {
+  color: var(--text-muted);
 }
 .settings-status {
   margin: 0 0 var(--space-1);

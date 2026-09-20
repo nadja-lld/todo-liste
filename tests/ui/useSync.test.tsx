@@ -277,4 +277,22 @@ describe("useSync", () => {
     expect(fetchImpl.mock.calls.length).toBe(afterFirstCycle);
     expect(view.getByTestId("status").textContent).toBe("idle");
   });
+
+  it("reports offline when a request is aborted by its deadline", async () => {
+    const fetchImpl = vi.fn().mockImplementation(() => {
+      const error = new Error("The operation was aborted");
+      error.name = "TimeoutError";
+      return Promise.reject(error);
+    });
+    const view = render(
+      <Probe
+        storage={configured()}
+        state={base()}
+        replace={vi.fn()}
+        fetchImpl={fetchImpl as unknown as typeof fetch}
+        onStatus={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(view.getByTestId("status").textContent).toBe("offline"));
+  });
 });

@@ -25,6 +25,13 @@ export class SyncProtocolError extends Error {
 export type PutResult =
   { ok: true; version: number } | { ok: false; current: RemoteDocument | null };
 
+/**
+ * A request that never settles would leave the app looking healthy while it
+ * silently stopped syncing, because the in-flight guard blocks every later
+ * attempt. Better to fail and be reported as offline.
+ */
+const REQUEST_TIMEOUT_MS = 15000;
+
 export interface SyncClient {
   /** null when the server holds no document yet. */
   get(): Promise<RemoteDocument | null>;
@@ -59,10 +66,15 @@ export function createSyncClient(
     Authorization: `Bearer ${accessCode}`,
     "Content-Type": "application/json",
   };
+  const timeout = () => AbortSignal.timeout(REQUEST_TIMEOUT_MS);
 
   return {
     async get(): Promise<RemoteDocument | null> {
-      const response = await fetchImpl(endpoint, { method: "GET", headers });
+      const response = await fetchImpl(endpoint, {
+        method: "GET",
+        headers,
+        signal: timeout(),
+      });
       if (response.status === 401) throw new SyncAuthError();
       if (response.status === 404) return null;
       if (!response.ok) throw new SyncProtocolError(`status ${response.status}`);
@@ -74,6 +86,7 @@ export function createSyncClient(
         method: "PUT",
         headers,
         body: JSON.stringify({ baseVersion, state }),
+        signal: timeout(),
       });
       if (response.status === 401) throw new SyncAuthError();
       if (response.status === 409) return { ok: false, current: toDocument(await response.json()) };

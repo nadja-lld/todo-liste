@@ -11,7 +11,7 @@ import {
   syncBaseUrl,
 } from "../storage/deviceSettings";
 import { resolveStorage } from "../storage/resolveStorage";
-import { syncStatusKey } from "../sync/status";
+import { syncStatusKey, type SyncStatus } from "../sync/status";
 import { AddTaskBar } from "./AddTaskBar";
 import { DelegatedList } from "./DelegatedList";
 import { ListSwitcher, type ViewId } from "./ListSwitcher";
@@ -22,6 +22,11 @@ import { TaskList } from "./TaskList";
 import { userName, userNames } from "./userNames";
 import { useAppState } from "./useAppState";
 import { useSync } from "./useSync";
+
+/** Statuses worth taking space in the header for. */
+function needsAttention(status: SyncStatus): boolean {
+  return status === "offline" || status === "error" || status === "auth-error";
+}
 
 function isOverviewView(view: ViewId): boolean {
   return view === "today" || view === "tomorrow" || view === "delegated";
@@ -111,11 +116,15 @@ export function App({ storage, now = () => new Date() }: AppProps) {
     <div class="app">
       <header class="app-header">
         <h1>{t("appTitle")}</h1>
-        {sync.status !== "disabled" && (
-          <span class={`sync-status sync-status--${sync.status}`} aria-live="polite">
-            {t(syncStatusKey(sync.status))}
-          </span>
-        )}
+        {/* Silence means everything is fine: announcing each routine success
+            made the header flicker on every edit and every poll. */}
+        <span class="sync-status" aria-live="polite">
+          {needsAttention(sync.status) && (
+            <span class={`sync-status__problem sync-status--${sync.status}`}>
+              {t(syncStatusKey(sync.status))}
+            </span>
+          )}
+        </span>
         <button
           type="button"
           class="icon-button"

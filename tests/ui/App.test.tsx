@@ -525,4 +525,13 @@ describe("App with two people", () => {
     // Anything finished more than a week ago is gone from the view.
     expect(screen.queryByText("Lange erledigt")).toBeNull();
   });
+
+  it("says nothing about syncing while it is working", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    // Sync is switched off in tests, but the point holds: routine states are
+    // never spelled out in the header.
+    expect(screen.queryByText("Abgeglichen")).toBeNull();
+    expect(screen.queryByText("Wird abgeglichen …")).toBeNull();
+    expect(screen.queryByText("Nur auf diesem Gerät")).toBeNull();
+  });
 });

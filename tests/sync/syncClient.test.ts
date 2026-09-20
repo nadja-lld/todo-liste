@@ -104,4 +104,17 @@ describe("createSyncClient.put", () => {
       createSyncClient("https://sync.example", "c", fetchImpl).put(0, sample()),
     ).rejects.toThrow(SyncProtocolError);
   });
+
+  it("gives every request a deadline so a hang cannot stall syncing forever", async () => {
+    // A fresh Response per call: a body can only be read once.
+    const fetchImpl = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(respond(200, { version: 1, state: sample() })));
+    const client = createSyncClient("https://sync.example", "c", fetchImpl);
+    await client.get();
+    await client.put(0, sample());
+    for (const call of fetchImpl.mock.calls) {
+      expect(call[1].signal).toBeInstanceOf(AbortSignal);
+    }
+  });
 });
