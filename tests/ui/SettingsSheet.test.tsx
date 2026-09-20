@@ -1,12 +1,23 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addTask, createInitialState, toggleTask } from "../../src/domain/state";
+import { inboxListId, listsOf, liveTasks } from "../../src/domain/selectors";
+import { addList, addTask, createInitialState, toggleTask } from "../../src/domain/state";
 import type { AppState } from "../../src/domain/types";
 import { setLanguage } from "../../src/i18n";
 import { SettingsSheet } from "../../src/ui/SettingsSheet";
 
 const now = new Date(2026, 8, 14, 9, 0);
+const NAMES = { a: "Person 1", b: "Person 2" };
+
+function initial(listName: string) {
+  return createInitialState(listName, NAMES, now);
+}
+
+/** The lists the person holding the device can see. */
+function ownListNames(state: AppState) {
+  return listsOf(state, "a").map((l) => l.name);
+}
 
 function harness(initial: AppState, overrides: Partial<Parameters<typeof SettingsSheet>[0]> = {}) {
   let current = initial;
@@ -20,6 +31,8 @@ function harness(initial: AppState, overrides: Partial<Parameters<typeof Setting
   };
   const props = () => ({
     state: current,
+    identity: "a" as const,
+    now: () => now,
     today: "2026-09-14",
     onUpdate,
     onReplace,
@@ -45,40 +58,44 @@ describe("SettingsSheet", () => {
   afterEach(cleanup);
 
   it("adds a list", () => {
-    const h = harness(createInitialState("Aufgaben"));
+    const h = harness(initial("Aufgaben"));
     fireEvent.input(screen.getByPlaceholderText("Neue Liste"), { target: { value: "Einkauf" } });
     fireEvent.click(screen.getByRole("button", { name: "Liste anlegen" }));
-    expect(h.state.lists.map((l) => l.name)).toEqual(["Aufgaben", "Einkauf"]);
+    expect(ownListNames(h.state)).toEqual(["Aufgaben", "Einkauf"]);
   });
 
   it("renames a list via prompt", () => {
-    const h = harness(createInitialState("Aufgaben"), { prompt: () => "Privat" });
+    const h = harness(initial("Aufgaben"), { prompt: () => "Privat" });
     fireEvent.click(screen.getByRole("button", { name: "Umbenennen: Aufgaben" }));
-    expect(h.state.lists[0]?.name).toBe("Privat");
+    expect(ownListNames(h.state)).toEqual(["Privat"]);
   });
 
   it("deletes a list with its tasks after confirmation", () => {
-    let state = createInitialState("A");
-    state = { ...state, lists: [...state.lists, { id: "b", name: "B", position: 1 }] };
-    state = addTask(state, { listId: "b", title: "In B" }, now);
+    let state = addList(initial("A"), "B", "a", now);
+    const listB = listsOf(state, "a")[1]!.id;
+    state = addTask(state, { listId: listB, title: "In B", createdBy: "a" }, now);
     const h = harness(state);
     fireEvent.click(screen.getByRole("button", { name: "Liste löschen: B" }));
-    expect(h.state.lists.map((l) => l.name)).toEqual(["A"]);
-    expect(h.state.tasks).toEqual([]);
+    expect(ownListNames(h.state)).toEqual(["A"]);
+    expect(liveTasks(h.state)).toEqual([]);
   });
 
   it("clears completed tasks after confirmation", () => {
-    let state = createInitialState("A");
-    state = addTask(state, { listId: state.lists[0]!.id, title: "Done" }, now);
+    let state = initial("A");
+    state = addTask(
+      state,
+      { listId: inboxListId(state, "a")!, title: "Done", createdBy: "a" },
+      now,
+    );
     state = toggleTask(state, state.tasks[0]!.id, now);
     const h = harness(state);
     fireEvent.click(screen.getByRole("button", { name: "Erledigte Aufgaben löschen" }));
-    expect(h.state.tasks).toEqual([]);
+    expect(liveTasks(h.state)).toEqual([]);
   });
 
   it("exports the state as a dated JSON file", async () => {
     const exportFile = vi.fn().mockResolvedValue(undefined);
-    harness(createInitialState("A"), { exportFile });
+    harness(initial("A"), { exportFile });
     fireEvent.click(screen.getByRole("button", { name: "Als JSON exportieren" }));
     await waitFor(() => expect(exportFile).toHaveBeenCalled());
     const [fileName, content] = exportFile.mock.calls[0]!;
@@ -87,18 +104,18 @@ describe("SettingsSheet", () => {
   });
 
   it("imports a valid file after confirmation", async () => {
-    const imported = createInitialState("Importiert");
-    const h = harness(createInitialState("A"));
+    const imported = initial("Importiert");
+    const h = harness(initial("A"));
     const file = new File([JSON.stringify(imported)], "todos.json", { type: "application/json" });
     const input = screen.getByLabelText("JSON importieren") as HTMLInputElement;
     Object.defineProperty(input, "files", { value: [file] });
     fireEvent.change(input);
-    await waitFor(() => expect(h.state.lists[0]?.name).toBe("Importiert"));
+    await waitFor(() => expect(ownListNames(h.state)).toEqual(["Importiert"]));
   });
 
   it("rejects an invalid file and keeps the state", async () => {
     const notify = vi.fn();
-    const h = harness(createInitialState("A"), { notify });
+    const h = harness(initial("A"), { notify });
     const file = new File(["{broken"], "todos.json", { type: "application/json" });
     const input = screen.getByLabelText("JSON importieren") as HTMLInputElement;
     Object.defineProperty(input, "files", { value: [file] });
@@ -106,27 +123,26 @@ describe("SettingsSheet", () => {
     await waitFor(() =>
       expect(notify).toHaveBeenCalledWith(expect.stringContaining("invalid JSON")),
     );
-    expect(h.state.lists[0]?.name).toBe("A");
+    expect(ownListNames(h.state)).toEqual(["A"]);
   });
 
   it("notifies and keeps the state when the file cannot be read", async () => {
     const notify = vi.fn();
-    const h = harness(createInitialState("A"), { notify });
+    const h = harness(initial("A"), { notify });
     const unreadableFile = { text: () => Promise.reject(new Error("unreadable")) };
     const input = screen.getByLabelText("JSON importieren") as HTMLInputElement;
     Object.defineProperty(input, "files", { value: [unreadableFile] });
     fireEvent.change(input);
     await waitFor(() => expect(notify).toHaveBeenCalledWith(expect.stringContaining("unreadable")));
-    expect(h.state.lists[0]?.name).toBe("A");
+    expect(ownListNames(h.state)).toEqual(["A"]);
   });
 
   it("deletes an empty list without asking for confirmation", () => {
-    let state = createInitialState("A");
-    state = { ...state, lists: [...state.lists, { id: "b", name: "B", position: 1 }] };
+    const state = addList(initial("A"), "B", "a", now);
     const confirm = vi.fn(() => true);
     const h = harness(state, { confirm });
     fireEvent.click(screen.getByRole("button", { name: "Liste löschen: B" }));
     expect(confirm).not.toHaveBeenCalled();
-    expect(h.state.lists.map((l) => l.name)).toEqual(["A"]);
+    expect(ownListNames(h.state)).toEqual(["A"]);
   });
 });

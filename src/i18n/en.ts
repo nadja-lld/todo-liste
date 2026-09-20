@@ -2,6 +2,8 @@ import type { de } from "./de";
 
 export const en: Record<keyof typeof de, string> = {
   appTitle: "To-Do",
+  defaultUserAName: "Person 1",
+  defaultUserBName: "Person 2",
   defaultListName: "Tasks",
   today: "Today",
   tomorrow: "Tomorrow",

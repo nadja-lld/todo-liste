@@ -14,7 +14,12 @@ export interface AppStateHandle {
 export function useAppState(storage: Storage, now: () => Date): AppStateHandle {
   const initial = useRef<ReturnType<typeof loadState> | null>(null);
   if (initial.current === null) {
-    initial.current = loadState(storage, t("defaultListName"), now());
+    initial.current = loadState(
+      storage,
+      t("defaultListName"),
+      { a: t("defaultUserAName"), b: t("defaultUserBName") },
+      now(),
+    );
   }
   const [state, setState] = useState<AppState>(initial.current.state);
   const [saveFailed, setSaveFailed] = useState(false);

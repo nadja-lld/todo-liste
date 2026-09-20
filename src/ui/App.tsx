@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { addDays, dueBucket, todayIso } from "../domain/dates";
 import { addTask, deleteTask, sortedLists, toggleTask, updateTask } from "../domain/state";
+import type { UserId } from "../domain/types";
 import { t } from "../i18n";
 import { resolveStorage } from "../storage/resolveStorage";
 import { AddTaskBar } from "./AddTaskBar";
@@ -26,6 +27,7 @@ export interface AppProps {
 }
 
 export function App({ storage, now = () => new Date() }: AppProps) {
+  const identity: UserId = "a";
   const resolved = useRef<ReturnType<typeof resolveStorage> | null>(null);
   if (resolved.current === null) {
     resolved.current = storage ? { storage, available: true } : resolveStorage();
@@ -97,7 +99,9 @@ export function App({ storage, now = () => new Date() }: AppProps) {
         disabled={activeListId === null}
         onAdd={(title) =>
           activeListId &&
-          app.update((state) => addTask(state, { listId: activeListId, title }, now()))
+          app.update((state) =>
+            addTask(state, { listId: activeListId, title, createdBy: identity }, now()),
+          )
         }
       />
 
@@ -105,14 +109,18 @@ export function App({ storage, now = () => new Date() }: AppProps) {
         <TaskDetailSheet
           task={selectedTask}
           lists={lists}
-          onPatch={(taskId, patch) => app.update((state) => updateTask(state, taskId, patch))}
-          onDelete={(taskId) => app.update((state) => deleteTask(state, taskId))}
+          onPatch={(taskId, patch) =>
+            app.update((state) => updateTask(state, taskId, patch, now()))
+          }
+          onDelete={(taskId) => app.update((state) => deleteTask(state, taskId, now()))}
           onClose={() => setSelectedTaskId(null)}
         />
       )}
       {settingsOpen && (
         <SettingsSheet
           state={app.state}
+          identity={identity}
+          now={now}
           today={today}
           onUpdate={app.update}
           onReplace={(next) => {

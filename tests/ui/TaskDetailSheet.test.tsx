@@ -5,9 +5,10 @@ import type { Task, TodoList } from "../../src/domain/types";
 import { setLanguage } from "../../src/i18n";
 import { TaskDetailSheet } from "../../src/ui/TaskDetailSheet";
 
+const AT = "2026-09-01T00:00:00.000Z";
 const lists: TodoList[] = [
-  { id: "a", name: "A", position: 0 },
-  { id: "b", name: "B", position: 1 },
+  { id: "a", name: "A", position: 0, owner: "a", updatedAt: AT },
+  { id: "b", name: "B", position: 1, owner: "a", updatedAt: AT },
 ];
 const task: Task = {
   id: "t1",
@@ -15,7 +16,9 @@ const task: Task = {
   title: "Miete",
   priority: "medium",
   recurrence: "none",
-  createdAt: "2026-09-01T00:00:00Z",
+  createdAt: AT,
+  createdBy: "a",
+  updatedAt: AT,
 };
 
 describe("TaskDetailSheet", () => {

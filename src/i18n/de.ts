@@ -1,5 +1,7 @@
 export const de = {
   appTitle: "To-Do",
+  defaultUserAName: "Person 1",
+  defaultUserBName: "Person 2",
   defaultListName: "Aufgaben",
   today: "Heute",
   tomorrow: "Morgen",
