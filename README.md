@@ -1,7 +1,11 @@
 # To-Do Liste
 
-Persönliche To-do-App fürs iPhone als installierbare Progressive Web App (PWA).
-Alle Daten bleiben ausschließlich auf dem Gerät im Browser-Speicher. Kein Server, kein Login.
+To-do-App fürs iPhone als installierbare Progressive Web App (PWA), ausgelegt auf genau
+zwei Personen: jede sieht ihre eigenen Listen und kann der anderen Aufgaben anlegen.
+
+Die App arbeitet offline-first — sie liest und schreibt den lokalen Browser-Speicher und
+gleicht im Hintergrund mit einem gemeinsamen Dokument ab. Ohne konfigurierten Abgleich
+läuft sie unverändert nur auf dem Gerät.
 
 **Live:** https://nadja-lld.github.io/todo-liste/
 
@@ -9,6 +13,7 @@ Alle Daten bleiben ausschließlich auf dem Gerät im Browser-Speicher. Kein Serv
 
 - Mehrere Listen, Ansicht „Heute" für fällige und überfällige Aufgaben
 - Fälligkeitsdatum, Priorität (hoch/mittel/niedrig), Wiederholung (täglich/wöchentlich/monatlich)
+- Aufgaben für die zweite Person anlegen; dort als „Neu von …" markiert, bis sie geöffnet werden
 - Export und Import aller Daten als JSON
 - Offline nutzbar, Dark Mode
 
@@ -28,5 +33,10 @@ make run       # Dev-Server, auch im lokalen Netz erreichbar
 make check     # Lint, Typecheck, Tests
 make build     # Produktions-Build nach dist/
 ```
+
+## Abgleich einrichten
+
+Ohne Einrichtung bleibt die App geräte-lokal. Für den Abgleich zwischen zwei Handys:
+`docs/SETUP-SYNC.md`.
 
 Details für Mitwirkende: `CONTRIBUTING.md`. Architektur und Konventionen: `CLAUDE.md`.

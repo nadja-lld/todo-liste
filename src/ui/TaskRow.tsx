@@ -6,11 +6,13 @@ interface Props {
   task: Task;
   today: string;
   listName?: string;
+  /** Set when the other person created this task and it has not been opened yet. */
+  newFromName?: string;
   onToggle: (taskId: string) => void;
   onOpen: (taskId: string) => void;
 }
 
-export function TaskRow({ task, today, listName, onToggle, onOpen }: Props) {
+export function TaskRow({ task, today, listName, newFromName, onToggle, onOpen }: Props) {
   const done = task.completedAt !== undefined;
   const bucket = dueBucket(task.dueDate, today);
   return (
@@ -31,6 +33,9 @@ export function TaskRow({ task, today, listName, onToggle, onOpen }: Props) {
             </span>
           )}
           {listName && <span class="task-list-name">{listName}</span>}
+          {newFromName !== undefined && (
+            <span class="task-row__badge">{t("newFrom", { name: newFromName })}</span>
+          )}
         </span>
       </button>
     </li>

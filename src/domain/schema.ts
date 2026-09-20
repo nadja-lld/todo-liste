@@ -2,11 +2,14 @@ import {
   PRIORITIES,
   RECURRENCES,
   SCHEMA_VERSION,
+  USER_IDS,
   type AppState,
   type Priority,
   type Recurrence,
   type Task,
   type TodoList,
+  type User,
+  type UserId,
 } from "./types";
 
 export type ParseResult = { ok: true; state: AppState } | { ok: false; error: string };
@@ -78,16 +81,30 @@ function requireOneOf<T extends string>(value: unknown, allowed: readonly T[], p
   return value as T;
 }
 
+function parseUser(raw: unknown, path: string): User {
+  if (!isRecord(raw)) fail(`${path} must be an object`);
+  return {
+    id: requireOneOf<UserId>(raw.id, USER_IDS, `${path}.id`),
+    name: requireString(raw.name, `${path}.name`),
+    updatedAt: requireTimestamp(raw.updatedAt, `${path}.updatedAt`),
+  };
+}
+
 function parseList(raw: unknown, path: string): TodoList {
   if (!isRecord(raw)) fail(`${path} must be an object`);
   if (typeof raw.position !== "number" || !Number.isInteger(raw.position)) {
     fail(`${path}.position must be an integer`);
   }
-  return {
+  const list: TodoList = {
     id: requireString(raw.id, `${path}.id`),
     name: requireString(raw.name, `${path}.name`),
     position: raw.position,
+    owner: requireOneOf<UserId>(raw.owner, USER_IDS, `${path}.owner`),
+    updatedAt: requireTimestamp(raw.updatedAt, `${path}.updatedAt`),
   };
+  const deletedAt = optionalTimestamp(raw.deletedAt, `${path}.deletedAt`);
+  if (deletedAt !== undefined) list.deletedAt = deletedAt;
+  return list;
 }
 
 function parseTask(raw: unknown, path: string, listIds: Set<string>): Task {
@@ -101,6 +118,8 @@ function parseTask(raw: unknown, path: string, listIds: Set<string>): Task {
     priority: requireOneOf<Priority>(raw.priority, PRIORITIES, `${path}.priority`),
     recurrence: requireOneOf<Recurrence>(raw.recurrence, RECURRENCES, `${path}.recurrence`),
     createdAt: requireTimestamp(raw.createdAt, `${path}.createdAt`),
+    createdBy: requireOneOf<UserId>(raw.createdBy, USER_IDS, `${path}.createdBy`),
+    updatedAt: requireTimestamp(raw.updatedAt, `${path}.updatedAt`),
   };
   const note = optionalString(raw.note, `${path}.note`);
   if (note !== undefined) task.note = note;
@@ -108,6 +127,10 @@ function parseTask(raw: unknown, path: string, listIds: Set<string>): Task {
   if (dueDate !== undefined) task.dueDate = dueDate;
   const completedAt = optionalTimestamp(raw.completedAt, `${path}.completedAt`);
   if (completedAt !== undefined) task.completedAt = completedAt;
+  const seenAt = optionalTimestamp(raw.seenAt, `${path}.seenAt`);
+  if (seenAt !== undefined) task.seenAt = seenAt;
+  const deletedAt = optionalTimestamp(raw.deletedAt, `${path}.deletedAt`);
+  if (deletedAt !== undefined) task.deletedAt = deletedAt;
   return task;
 }
 
@@ -125,14 +148,24 @@ export function parseAppState(input: unknown): ParseResult {
     if (input.schemaVersion !== SCHEMA_VERSION) {
       fail(`unsupported schemaVersion: ${String(input.schemaVersion)}`);
     }
+    if (!Array.isArray(input.users)) fail("users must be an array");
     if (!Array.isArray(input.lists)) fail("lists must be an array");
     if (!Array.isArray(input.tasks)) fail("tasks must be an array");
+    const users = input.users.map((raw, index) => parseUser(raw, `users[${index}]`));
+    const userIds = users.map((user) => user.id).sort();
+    if (
+      userIds.length !== USER_IDS.length ||
+      userIds.join(",") !== [...USER_IDS].sort().join(",")
+    ) {
+      fail(`users must contain exactly the ids ${USER_IDS.join(", ")}`);
+    }
     const lists = input.lists.map((raw, index) => parseList(raw, `lists[${index}]`));
     requireUniqueIds(lists, "lists");
+    // Tombstoned lists still count as known so their tasks stay valid until purged.
     const listIds = new Set(lists.map((list) => list.id));
     const tasks = input.tasks.map((raw, index) => parseTask(raw, `tasks[${index}]`, listIds));
     requireUniqueIds(tasks, "tasks");
-    return { ok: true, state: { schemaVersion: SCHEMA_VERSION, lists, tasks } };
+    return { ok: true, state: { schemaVersion: SCHEMA_VERSION, users, lists, tasks } };
   } catch (error) {
     if (error instanceof ValidationError) return { ok: false, error: error.message };
     throw error;

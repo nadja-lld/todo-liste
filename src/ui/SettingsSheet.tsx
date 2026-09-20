@@ -1,15 +1,18 @@
 import { useState } from "preact/hooks";
 import { exportFileName, parseImport, serializeState } from "../domain/exportImport";
+import { listsOf, tasksOf, userName } from "../domain/selectors";
 import {
   addList,
   clearCompleted,
   deleteList,
   moveList,
   renameList,
-  sortedLists,
+  renameUser,
 } from "../domain/state";
-import type { AppState } from "../domain/types";
+import { USER_IDS, type AppState, type UserId } from "../domain/types";
 import { t } from "../i18n";
+import { clearDeviceSettings } from "../storage/deviceSettings";
+import { syncStatusKey, type SyncStatus } from "../sync/status";
 import { Sheet } from "./Sheet";
 import { shareOrDownloadFile } from "./share";
 
@@ -29,6 +32,10 @@ function readFileText(file: File): Promise<string> {
 
 interface Props {
   state: AppState;
+  identity: UserId;
+  storage: Storage;
+  syncStatus: SyncStatus;
+  now: () => Date;
   today: string;
   onUpdate: (fn: (state: AppState) => AppState) => void;
   onReplace: (state: AppState) => void;
@@ -41,6 +48,10 @@ interface Props {
 
 export function SettingsSheet({
   state,
+  identity,
+  storage,
+  syncStatus,
+  now,
   today,
   onUpdate,
   onReplace,
@@ -51,9 +62,10 @@ export function SettingsSheet({
   exportFile = (fileName, content) => shareOrDownloadFile(fileName, content, "application/json"),
 }: Props) {
   const [newListName, setNewListName] = useState("");
-  const lists = sortedLists(state);
-  const completedCount = state.tasks.filter((task) => task.completedAt !== undefined).length;
-  const taskCount = (listId: string) => state.tasks.filter((task) => task.listId === listId).length;
+  const lists = listsOf(state, identity);
+  const ownTasks = tasksOf(state, identity);
+  const completedCount = ownTasks.filter((task) => task.completedAt !== undefined).length;
+  const taskCount = (listId: string) => ownTasks.filter((task) => task.listId === listId).length;
 
   const handleImport = async (input: HTMLInputElement) => {
     const file = input.files?.[0];
@@ -66,7 +78,7 @@ export function SettingsSheet({
       notify(t("importInvalid", { error: String(error instanceof Error ? error.message : error) }));
       return;
     }
-    const result = parseImport(text);
+    const result = parseImport(text, { a: t("defaultUserAName"), b: t("defaultUserBName") }, now());
     if (!result.ok) {
       notify(t("importInvalid", { error: result.error }));
       return;
@@ -89,7 +101,7 @@ export function SettingsSheet({
               class="icon-button"
               aria-label={`${t("moveListUp")}: ${list.name}`}
               disabled={index === 0}
-              onClick={() => onUpdate((s) => moveList(s, list.id, "up"))}
+              onClick={() => onUpdate((s) => moveList(s, list.id, "up", now()))}
             >
               ↑
             </button>
@@ -98,7 +110,7 @@ export function SettingsSheet({
               class="icon-button"
               aria-label={`${t("moveListDown")}: ${list.name}`}
               disabled={index === lists.length - 1}
-              onClick={() => onUpdate((s) => moveList(s, list.id, "down"))}
+              onClick={() => onUpdate((s) => moveList(s, list.id, "down", now()))}
             >
               ↓
             </button>
@@ -108,7 +120,7 @@ export function SettingsSheet({
               aria-label={`${t("renameList")}: ${list.name}`}
               onClick={() => {
                 const name = prompt(t("renameList"), list.name);
-                if (name !== null) onUpdate((s) => renameList(s, list.id, name));
+                if (name !== null) onUpdate((s) => renameList(s, list.id, name, now()));
               }}
             >
               ✎
@@ -126,7 +138,7 @@ export function SettingsSheet({
                 if (count > 0 && !confirm(t("confirmDeleteList", { name: list.name, count }))) {
                   return;
                 }
-                onUpdate((s) => deleteList(s, list.id));
+                onUpdate((s) => deleteList(s, list.id, now()));
               }}
             >
               ✕
@@ -139,7 +151,7 @@ export function SettingsSheet({
         onSubmit={(event) => {
           event.preventDefault();
           if (newListName.trim() === "") return;
-          onUpdate((s) => addList(s, newListName));
+          onUpdate((s) => addList(s, newListName, identity, now()));
           setNewListName("");
         }}
       >
@@ -154,6 +166,42 @@ export function SettingsSheet({
           {t("addList")}
         </button>
       </form>
+
+      <h3 class="section-title">{t("people")}</h3>
+      <ul class="settings-lists">
+        {USER_IDS.map((id) => (
+          <li key={id} class="settings-list-row">
+            <label class="field field--inline">
+              <span>{t("personName", { name: userName(state, id) })}</span>
+              <input
+                type="text"
+                value={userName(state, id)}
+                aria-label={t("personName", { name: userName(state, id) })}
+                onChange={(event) =>
+                  onUpdate((s) =>
+                    renameUser(s, id, (event.target as HTMLInputElement).value, now()),
+                  )
+                }
+              />
+            </label>
+          </li>
+        ))}
+      </ul>
+
+      <h3 class="section-title">{t("syncStatus")}</h3>
+      <p class="settings-status">{t(syncStatusKey(syncStatus))}</p>
+      <button
+        type="button"
+        class="secondary-button secondary-button--danger"
+        onClick={() => {
+          if (confirm(t("confirmResetDevice"))) {
+            clearDeviceSettings(storage);
+            window.location.reload();
+          }
+        }}
+      >
+        {t("resetDevice")}
+      </button>
 
       <h3 class="section-title">{t("data")}</h3>
       <button
@@ -176,7 +224,8 @@ export function SettingsSheet({
         class="secondary-button"
         disabled={completedCount === 0}
         onClick={() => {
-          if (confirm(t("confirmClearCompleted"))) onUpdate(clearCompleted);
+          if (confirm(t("confirmClearCompleted")))
+            onUpdate((s) => clearCompleted(s, identity, now()));
         }}
       >
         {t("clearCompleted")}

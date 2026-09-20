@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { parseAppState } from "../../src/domain/schema";
 
+const AT = "2026-09-14T08:00:00.000Z";
+
 const validState = {
-  schemaVersion: 1,
-  lists: [{ id: "l1", name: "Aufgaben", position: 0 }],
+  schemaVersion: 2,
+  users: [
+    { id: "a", name: "Person 1", updatedAt: AT },
+    { id: "b", name: "Person 2", updatedAt: AT },
+  ],
+  lists: [{ id: "l1", name: "Aufgaben", position: 0, owner: "a", updatedAt: AT }],
   tasks: [
     {
       id: "t1",
@@ -12,6 +18,8 @@ const validState = {
       priority: "medium",
       recurrence: "none",
       createdAt: "2026-09-14T08:00:00.000Z",
+      createdBy: "a",
+      updatedAt: AT,
     },
     {
       id: "t2",
@@ -23,6 +31,8 @@ const validState = {
       recurrence: "monthly",
       completedAt: "2026-09-01T10:00:00.000Z",
       createdAt: "2026-08-01T08:00:00.000Z",
+      createdBy: "b",
+      updatedAt: AT,
     },
   ],
 };
@@ -43,8 +53,33 @@ describe("parseAppState", () => {
   });
 
   it("rejects unknown schema version", () => {
-    const result = parseAppState({ ...validState, schemaVersion: 2 });
-    expect(result).toEqual({ ok: false, error: "unsupported schemaVersion: 2" });
+    const result = parseAppState({ ...validState, schemaVersion: 99 });
+    expect(result).toEqual({ ok: false, error: "unsupported schemaVersion: 99" });
+  });
+
+  it("rejects a document without exactly two users", () => {
+    const bad = { ...validState, users: [validState.users[0]] };
+    expect(parseAppState(bad).ok).toBe(false);
+  });
+
+  it("rejects a list with an unknown owner", () => {
+    const bad = { ...validState, lists: [{ ...validState.lists[0], owner: "c" }] };
+    const result = parseAppState(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain("lists[0].owner");
+  });
+
+  it("rejects a list without updatedAt", () => {
+    const { updatedAt: _dropped, ...noStamp } = validState.lists[0]!;
+    expect(parseAppState({ ...validState, lists: [noStamp] }).ok).toBe(false);
+  });
+
+  it("accepts a task whose list is tombstoned", () => {
+    const ok = {
+      ...validState,
+      lists: [{ ...validState.lists[0], deletedAt: AT }],
+    };
+    expect(parseAppState(ok).ok).toBe(true);
   });
 
   it("rejects a task with invalid priority", () => {
@@ -78,8 +113,8 @@ describe("parseAppState", () => {
     const bad = {
       ...validState,
       lists: [
-        { id: "l1", name: "A", position: 0 },
-        { id: "l1", name: "B", position: 1 },
+        { id: "l1", name: "A", position: 0, owner: "a", updatedAt: AT },
+        { id: "l1", name: "B", position: 1, owner: "a", updatedAt: AT },
       ],
     };
     expect(parseAppState(bad).ok).toBe(false);

@@ -21,6 +21,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # Unset means the app runs device-only, exactly as it did before sync.
+          VITE_SYNC_URL: ${{ vars.SYNC_URL }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

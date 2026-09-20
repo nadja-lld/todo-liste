@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { inboxListId, listsOf, liveLists, liveTasks, userName } from "../../src/domain/selectors";
 import {
   addList,
   addTask,
@@ -6,44 +7,52 @@ import {
   createInitialState,
   deleteList,
   deleteTask,
+  markTaskSeen,
   moveList,
   renameList,
-  sortedLists,
+  renameUser,
   toggleTask,
   updateTask,
 } from "../../src/domain/state";
 import type { AppState } from "../../src/domain/types";
 
 const now = new Date(2026, 8, 14, 9, 0); // 14 Sep 2026 local
+const later = new Date(2026, 8, 14, 11, 0);
+const NAMES = { a: "Person 1", b: "Person 2" };
+
+function initial(listName = "Aufgaben"): AppState {
+  return createInitialState(listName, NAMES, now);
+}
 
 function stateWithTask(overrides: Partial<Parameters<typeof updateTask>[2]> = {}): {
   state: AppState;
   taskId: string;
   listId: string;
 } {
-  const initial = createInitialState("Aufgaben");
-  const listId = initial.lists[0]!.id;
-  let state = addTask(initial, { listId, title: "Miete" }, now);
+  const start = initial();
+  const listId = inboxListId(start, "a")!;
+  let state = addTask(start, { listId, title: "Miete", createdBy: "a" }, now);
   const taskId = state.tasks[0]!.id;
-  state = updateTask(state, taskId, overrides);
+  state = updateTask(state, taskId, overrides, now);
   return { state, taskId, listId };
 }
 
 describe("createInitialState", () => {
-  it("creates one default list and no tasks", () => {
-    const state = createInitialState("Aufgaben");
-    expect(state.schemaVersion).toBe(1);
-    expect(state.lists).toHaveLength(1);
-    expect(state.lists[0]?.name).toBe("Aufgaben");
+  it("creates one list per person and no tasks", () => {
+    const state = initial();
+    expect(state.schemaVersion).toBe(2);
+    expect(state.users.map((u) => u.id)).toEqual(["a", "b"]);
+    expect(listsOf(state, "a")).toHaveLength(1);
+    expect(listsOf(state, "b")).toHaveLength(1);
     expect(state.tasks).toEqual([]);
   });
 });
 
 describe("addTask", () => {
   it("adds a medium-priority, non-recurring task with trimmed title", () => {
-    const initial = createInitialState("Aufgaben");
-    const listId = initial.lists[0]!.id;
-    const state = addTask(initial, { listId, title: "  Milch kaufen  " }, now);
+    const start = initial();
+    const listId = inboxListId(start, "a")!;
+    const state = addTask(start, { listId, title: "  Milch kaufen  ", createdBy: "a" }, now);
     expect(state.tasks).toHaveLength(1);
     expect(state.tasks[0]).toMatchObject({
       listId,
@@ -51,14 +60,62 @@ describe("addTask", () => {
       priority: "medium",
       recurrence: "none",
       createdAt: now.toISOString(),
+      createdBy: "a",
+      updatedAt: now.toISOString(),
     });
-    expect(initial.tasks).toHaveLength(0);
+    expect(start.tasks).toHaveLength(0);
   });
 
   it("ignores empty titles", () => {
-    const initial = createInitialState("Aufgaben");
-    const state = addTask(initial, { listId: initial.lists[0]!.id, title: "   " }, now);
-    expect(state).toBe(initial);
+    const start = initial();
+    const state = addTask(
+      start,
+      { listId: inboxListId(start, "a")!, title: "   ", createdBy: "a" },
+      now,
+    );
+    expect(state).toBe(start);
+  });
+
+  it("marks a task added to your own list as already seen", () => {
+    const start = initial();
+    const state = addTask(
+      start,
+      { listId: inboxListId(start, "a")!, title: "Für mich", createdBy: "a" },
+      now,
+    );
+    expect(state.tasks[0]!.seenAt).toBe(now.toISOString());
+  });
+
+  it("leaves a task delegated to the other person unseen", () => {
+    const start = initial();
+    const state = addTask(
+      start,
+      { listId: inboxListId(start, "b")!, title: "Für dich", createdBy: "a" },
+      now,
+    );
+    expect(state.tasks[0]).not.toHaveProperty("seenAt");
+    expect(state.tasks[0]!.createdBy).toBe("a");
+  });
+});
+
+describe("markTaskSeen", () => {
+  it("stamps an unseen task once and never again", () => {
+    const start = initial();
+    let state = addTask(
+      start,
+      { listId: inboxListId(start, "b")!, title: "Für dich", createdBy: "a" },
+      now,
+    );
+    const id = state.tasks[0]!.id;
+    state = markTaskSeen(state, id, later);
+    expect(state.tasks[0]!.seenAt).toBe(later.toISOString());
+    const again = markTaskSeen(state, id, new Date(2026, 8, 14, 13, 0));
+    expect(again).toBe(state);
+  });
+
+  it("ignores an unknown task", () => {
+    const state = initial();
+    expect(markTaskSeen(state, "nope", now)).toBe(state);
   });
 });
 
@@ -66,19 +123,19 @@ describe("updateTask", () => {
   it("applies a patch and removes dueDate when set to undefined", () => {
     const { state, taskId } = stateWithTask({ dueDate: "2026-10-01", priority: "high" });
     expect(state.tasks[0]).toMatchObject({ dueDate: "2026-10-01", priority: "high" });
-    const cleared = updateTask(state, taskId, { dueDate: undefined });
+    const cleared = updateTask(state, taskId, { dueDate: undefined }, now);
     expect(cleared.tasks[0]).not.toHaveProperty("dueDate");
   });
 
   it("keeps required fields when the patch sets them to undefined", () => {
     const { state, taskId } = stateWithTask();
-    const result = updateTask(state, taskId, { title: undefined, priority: undefined });
+    const result = updateTask(state, taskId, { title: undefined, priority: undefined }, now);
     expect(result.tasks[0]).toMatchObject({ title: "Miete", priority: "medium" });
   });
 
   it("trims the title and drops an empty note", () => {
     const { state, taskId } = stateWithTask();
-    const result = updateTask(state, taskId, { title: "  Miete zahlen  ", note: "   " });
+    const result = updateTask(state, taskId, { title: "  Miete zahlen  ", note: "   " }, now);
     expect(result.tasks[0]).toMatchObject({ title: "Miete zahlen" });
     expect(result.tasks[0]).not.toHaveProperty("note");
   });
@@ -86,8 +143,14 @@ describe("updateTask", () => {
   it("clears the note when set to undefined", () => {
     const { state, taskId } = stateWithTask({ note: "Bank" });
     expect(state.tasks[0]).toHaveProperty("note", "Bank");
-    const result = updateTask(state, taskId, { note: undefined });
+    const result = updateTask(state, taskId, { note: undefined }, now);
     expect(result.tasks[0]).not.toHaveProperty("note");
+  });
+
+  it("stamps updatedAt so the change wins a later merge", () => {
+    const { state, taskId } = stateWithTask();
+    const edited = updateTask(state, taskId, { title: "Brot" }, later);
+    expect(edited.tasks[0]!.updatedAt).toBe(later.toISOString());
   });
 });
 
@@ -124,8 +187,23 @@ describe("toggleTask", () => {
       recurrence: "weekly",
       dueDate: "2026-09-17",
       createdAt: now.toISOString(),
+      createdBy: "a",
     });
     expect(next).not.toHaveProperty("completedAt");
+  });
+
+  it("marks the generated follow-up as seen so it never reads as delegated", () => {
+    const start = initial();
+    let state = addTask(
+      start,
+      { listId: inboxListId(start, "b")!, title: "Müll", createdBy: "a" },
+      now,
+    );
+    const id = state.tasks[0]!.id;
+    state = updateTask(state, id, { recurrence: "daily", dueDate: "2026-09-14" }, now);
+    state = toggleTask(state, id, now);
+    const followUp = state.tasks.find((t) => t.id !== id)!;
+    expect(followUp.seenAt).toBe(now.toISOString());
   });
 
   it("uses today as the base when a recurring task has no due date", () => {
@@ -144,78 +222,151 @@ describe("toggleTask", () => {
 });
 
 describe("deleteTask / clearCompleted", () => {
-  it("deletes a task by id", () => {
+  it("tombstones a task instead of dropping it", () => {
     const { state, taskId } = stateWithTask();
-    expect(deleteTask(state, taskId).tasks).toEqual([]);
+    const after = deleteTask(state, taskId, now);
+    expect(after.tasks).toHaveLength(1);
+    expect(after.tasks[0]!.deletedAt).toBe(now.toISOString());
+    expect(liveTasks(after)).toEqual([]);
   });
 
   it("returns the same state when deleting an unknown task", () => {
     const { state } = stateWithTask();
-    expect(deleteTask(state, "nope")).toBe(state);
+    expect(deleteTask(state, "nope", now)).toBe(state);
   });
 
-  it("removes only completed tasks", () => {
+  it("returns the same state when deleting an already deleted task", () => {
+    const { state, taskId } = stateWithTask();
+    const once = deleteTask(state, taskId, now);
+    expect(deleteTask(once, taskId, later)).toBe(once);
+  });
+
+  it("clears only completed tasks", () => {
     const { state, taskId, listId } = stateWithTask();
-    const withSecond = addTask(state, { listId, title: "Offen" }, now);
+    const withSecond = addTask(state, { listId, title: "Offen", createdBy: "a" }, now);
     const done = toggleTask(withSecond, taskId, now);
-    const cleared = clearCompleted(done);
-    expect(cleared.tasks.map((t) => t.title)).toEqual(["Offen"]);
+    const cleared = clearCompleted(done, "a", now);
+    expect(liveTasks(cleared).map((t) => t.title)).toEqual(["Offen"]);
+  });
+
+  it("leaves the other person's completed tasks alone", () => {
+    const start = initial();
+    let state = addTask(
+      start,
+      { listId: inboxListId(start, "a")!, title: "Meins", createdBy: "a" },
+      now,
+    );
+    state = addTask(
+      state,
+      { listId: inboxListId(state, "b")!, title: "Deins", createdBy: "b" },
+      now,
+    );
+    state = toggleTask(state, state.tasks[0]!.id, now);
+    state = toggleTask(state, state.tasks[1]!.id, now);
+    const cleared = clearCompleted(state, "a", now);
+    expect(liveTasks(cleared).map((t) => t.title)).toEqual(["Deins"]);
   });
 
   it("returns the same state when nothing is completed", () => {
     const { state } = stateWithTask();
-    expect(clearCompleted(state)).toBe(state);
+    expect(clearCompleted(state, "a", now)).toBe(state);
   });
 });
 
 describe("lists", () => {
   it("adds a list at the end with the next position", () => {
-    const state = addList(createInitialState("Aufgaben"), "Einkauf");
-    expect(sortedLists(state).map((l) => l.name)).toEqual(["Aufgaben", "Einkauf"]);
-    expect(state.lists[1]?.position).toBe(1);
+    const state = addList(initial(), "Einkauf", "a", now);
+    expect(listsOf(state, "a").map((l) => l.name)).toEqual(["Aufgaben", "Einkauf"]);
   });
 
   it("ignores empty list names", () => {
-    const initial = createInitialState("Aufgaben");
-    expect(addList(initial, "  ")).toBe(initial);
+    const start = initial();
+    expect(addList(start, "  ", "a", now)).toBe(start);
   });
 
   it("renames a list", () => {
-    const initial = createInitialState("Aufgaben");
-    const renamed = renameList(initial, initial.lists[0]!.id, "Privat");
-    expect(renamed.lists[0]?.name).toBe("Privat");
+    const start = initial();
+    const renamed = renameList(start, inboxListId(start, "a")!, "Privat", now);
+    expect(listsOf(renamed, "a")[0]!.name).toBe("Privat");
   });
 
   it("returns the same state when renaming an unknown list", () => {
-    const initial = createInitialState("Aufgaben");
-    expect(renameList(initial, "nope", "X")).toBe(initial);
+    const start = initial();
+    expect(renameList(start, "nope", "X", now)).toBe(start);
   });
 
-  it("moves a list up and down and ignores moves past the edges", () => {
-    let state = addList(addList(createInitialState("A"), "B"), "C");
-    const idC = sortedLists(state)[2]!.id;
-    state = moveList(state, idC, "up");
-    expect(sortedLists(state).map((l) => l.name)).toEqual(["A", "C", "B"]);
-    state = moveList(state, idC, "up");
-    expect(sortedLists(state).map((l) => l.name)).toEqual(["C", "A", "B"]);
-    const unchanged = moveList(state, idC, "up");
-    expect(sortedLists(unchanged).map((l) => l.name)).toEqual(["C", "A", "B"]);
-    state = moveList(state, idC, "down");
-    expect(sortedLists(state).map((l) => l.name)).toEqual(["A", "C", "B"]);
+  it("moves a list up and down within its owner and ignores moves past the edges", () => {
+    let state = addList(addList(initial("A"), "B", "a", now), "C", "a", now);
+    const idC = listsOf(state, "a")[2]!.id;
+    state = moveList(state, idC, "up", now);
+    expect(listsOf(state, "a").map((l) => l.name)).toEqual(["A", "C", "B"]);
+    state = moveList(state, idC, "up", now);
+    expect(listsOf(state, "a").map((l) => l.name)).toEqual(["C", "A", "B"]);
+    const unchanged = moveList(state, idC, "up", now);
+    expect(listsOf(unchanged, "a").map((l) => l.name)).toEqual(["C", "A", "B"]);
+    state = moveList(state, idC, "down", now);
+    expect(listsOf(state, "a").map((l) => l.name)).toEqual(["A", "C", "B"]);
   });
 
-  it("deletes a list together with its tasks", () => {
-    let state = addList(createInitialState("A"), "B");
-    const idB = sortedLists(state)[1]!.id;
-    state = addTask(state, { listId: idB, title: "In B" }, now);
-    state = addTask(state, { listId: state.lists[0]!.id, title: "In A" }, now);
-    const after = deleteList(state, idB);
-    expect(after.lists.map((l) => l.name)).toEqual(["A"]);
-    expect(after.tasks.map((t) => t.title)).toEqual(["In A"]);
+  it("never reorders across people", () => {
+    const start = initial("A");
+    const bList = inboxListId(start, "b")!;
+    const state = moveList(start, bList, "up", now);
+    expect(state).toBe(start);
   });
 
-  it("refuses to delete the last remaining list", () => {
-    const initial = createInitialState("A");
-    expect(deleteList(initial, initial.lists[0]!.id)).toBe(initial);
+  it("tombstones a list together with its tasks", () => {
+    let state = addList(initial("A"), "B", "a", now);
+    const idB = listsOf(state, "a")[1]!.id;
+    state = addTask(state, { listId: idB, title: "In B", createdBy: "a" }, now);
+    state = addTask(
+      state,
+      { listId: inboxListId(state, "a")!, title: "In A", createdBy: "a" },
+      now,
+    );
+    const after = deleteList(state, idB, now);
+    expect(listsOf(after, "a").map((l) => l.name)).toEqual(["A"]);
+    expect(liveTasks(after).map((t) => t.title)).toEqual(["In A"]);
+    expect(after.tasks.find((t) => t.title === "In B")!.deletedAt).toBe(now.toISOString());
+    expect(after.lists).toHaveLength(3); // tombstone retained for the merge
+  });
+
+  it("refuses to delete the owner's last remaining list", () => {
+    const start = initial("A");
+    expect(deleteList(start, inboxListId(start, "a")!, now)).toBe(start);
+  });
+
+  it("hides tombstoned lists from liveLists but keeps the other person's", () => {
+    let state = addList(initial("A"), "B", "a", now);
+    const idB = listsOf(state, "a")[1]!.id;
+    state = deleteList(state, idB, now);
+    expect(liveLists(state).map((l) => l.name)).toEqual(["A", "A"]);
+  });
+});
+
+describe("users", () => {
+  it("renames a person", () => {
+    const state = renameUser(initial(), "b", "  Chris  ", later);
+    expect(userName(state, "b")).toBe("Chris");
+    expect(state.users.find((u) => u.id === "b")!.updatedAt).toBe(later.toISOString());
+  });
+
+  it("ignores an empty name", () => {
+    const start = initial();
+    expect(renameUser(start, "b", "   ", now)).toBe(start);
+  });
+});
+
+describe("inboxListId", () => {
+  it("gives each person their own inbox", () => {
+    const state = initial();
+    expect(inboxListId(state, "a")).not.toBeNull();
+    expect(inboxListId(state, "b")).not.toBeNull();
+    expect(inboxListId(state, "a")).not.toBe(inboxListId(state, "b"));
+  });
+
+  it("returns the lowest-position live list", () => {
+    const state = addList(initial(), "Zweitliste", "a", now);
+    expect(inboxListId(state, "a")).toBe(listsOf(state, "a")[0]!.id);
   });
 });

@@ -13,6 +13,8 @@ interface Props {
   onShowCompletedChange: (open: boolean) => void;
   onToggle: (taskId: string) => void;
   onOpen: (taskId: string) => void;
+  /** Returns the name to show as "new from X", or undefined for no marker. */
+  newFromName: (task: Task) => string | undefined;
 }
 
 export function TaskList(props: Props) {
@@ -33,6 +35,7 @@ export function TaskList(props: Props) {
               task={task}
               today={props.today}
               listName={listName(task)}
+              newFromName={props.newFromName(task)}
               onToggle={props.onToggle}
               onOpen={props.onOpen}
             />
@@ -55,6 +58,7 @@ export function TaskList(props: Props) {
                 task={task}
                 today={props.today}
                 listName={listName(task)}
+                newFromName={props.newFromName(task)}
                 onToggle={props.onToggle}
                 onOpen={props.onOpen}
               />

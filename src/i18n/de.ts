@@ -1,5 +1,7 @@
 export const de = {
   appTitle: "To-Do",
+  defaultUserAName: "Person 1",
+  defaultUserBName: "Person 2",
   defaultListName: "Aufgaben",
   today: "Heute",
   tomorrow: "Morgen",
@@ -60,5 +62,27 @@ export const de = {
     "Gespeicherte Daten waren beschädigt und wurden gesichert. Die App startet leer.",
   updateAvailable: "Neue Version verfügbar.",
   updateNow: "Aktualisieren",
+  onboardingTitle: "Einrichten",
+  onboardingIntro:
+    "Gib den gemeinsamen Zugangscode ein und sag, wer du bist. Das ist nur einmal pro Gerät nötig.",
+  accessCode: "Zugangscode",
+  whoAreYou: "Wer bist du?",
+  startUsing: "Loslegen",
+  forMe: "Für mich",
+  forOther: "Für {name}",
+  newFrom: "Neu von {name}",
+  people: "Personen",
+  personName: "Name von {name}",
+  syncStatus: "Abgleich",
+  syncStatusSynced: "Abgeglichen",
+  syncStatusSyncing: "Wird abgeglichen …",
+  syncStatusOffline: "Offline — wird nachgeholt",
+  syncStatusError: "Abgleich fehlgeschlagen",
+  syncStatusDisabled: "Nur auf diesem Gerät",
+  syncAuthFailed:
+    "Der Zugangscode wurde abgelehnt. Setze das Gerät in den Einstellungen zurück und gib ihn neu ein.",
+  resetDevice: "Gerät zurücksetzen",
+  confirmResetDevice:
+    "Zugangscode und Identität auf diesem Gerät löschen? Die Aufgaben bleiben erhalten.",
   overdue: "Überfällig",
 } as const;

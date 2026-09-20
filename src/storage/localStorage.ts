@@ -1,6 +1,7 @@
 import { parseAppState } from "../domain/schema";
 import { createInitialState } from "../domain/state";
-import type { AppState } from "../domain/types";
+import type { AppState, UserNames } from "../domain/types";
+import { migrate } from "../domain/migrate";
 
 export const STATE_KEY = "todo.state";
 export const BACKUP_KEY_PREFIX = "todo.state.backup.";
@@ -10,9 +11,9 @@ export interface LoadResult {
   recoveredFromCorrupt: boolean;
 }
 
-function tryParse(text: string): AppState | null {
+function tryParse(text: string, names: UserNames, now: Date): AppState | null {
   try {
-    const parsed = parseAppState(JSON.parse(text));
+    const parsed = parseAppState(migrate(JSON.parse(text), names, now));
     return parsed.ok ? parsed.state : null;
   } catch {
     return null;
@@ -28,17 +29,22 @@ function tryBackup(storage: Storage, payload: string, now: Date): boolean {
   }
 }
 
-export function loadState(storage: Storage, defaultListName: string, now: Date): LoadResult {
+export function loadState(
+  storage: Storage,
+  defaultListName: string,
+  names: UserNames,
+  now: Date,
+): LoadResult {
   const stored = storage.getItem(STATE_KEY);
   if (stored === null) {
-    return { state: createInitialState(defaultListName), recoveredFromCorrupt: false };
+    return { state: createInitialState(defaultListName, names, now), recoveredFromCorrupt: false };
   }
-  const state = tryParse(stored);
+  const state = tryParse(stored, names, now);
   if (state) return { state, recoveredFromCorrupt: false };
 
   const backedUp = tryBackup(storage, stored, now);
   if (backedUp) storage.removeItem(STATE_KEY);
-  return { state: createInitialState(defaultListName), recoveredFromCorrupt: true };
+  return { state: createInitialState(defaultListName, names, now), recoveredFromCorrupt: true };
 }
 
 export function saveState(storage: Storage, state: AppState): boolean {

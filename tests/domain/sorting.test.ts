@@ -9,6 +9,8 @@ function task(overrides: Partial<Task> & { id: string }): Task {
     priority: "medium",
     recurrence: "none",
     createdAt: "2026-09-01T00:00:00.000Z",
+    createdBy: "a",
+    updatedAt: "2026-09-01T00:00:00.000Z",
     ...overrides,
   };
 }
