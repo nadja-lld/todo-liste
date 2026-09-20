@@ -13,7 +13,7 @@ export default defineConfig({
       manifest: {
         name: "To-Do Liste",
         short_name: "To-Do",
-        description: "Persönliche To-do-Liste, Daten nur auf dem Gerät.",
+        description: "Gemeinsame To-do-Liste für zwei Personen, offline nutzbar.",
         lang: "de",
         start_url: "/todo-liste/",
         scope: "/todo-liste/",
