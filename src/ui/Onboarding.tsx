@@ -4,6 +4,8 @@ import { t } from "../i18n";
 
 interface Props {
   names: UserNames;
+  /** Shown when the screen reappears because the code was rejected. */
+  notice?: string;
   onDone: (identity: UserId, accessCode: string) => void;
 }
 
@@ -11,7 +13,7 @@ interface Props {
  * Shown once per device. Until both the shared code and the person are known the
  * app cannot tell whose list to render, so this blocks everything else.
  */
-export function Onboarding({ names, onDone }: Props) {
+export function Onboarding({ names, notice, onDone }: Props) {
   const [code, setCode] = useState("");
   const [identity, setIdentity] = useState<UserId | null>(null);
   const ready = code.trim() !== "" && identity !== null;
@@ -29,6 +31,7 @@ export function Onboarding({ names, onDone }: Props) {
           onDone(identity, code.trim());
         }}
       >
+        {notice !== undefined && <p class="banner banner--error">{notice}</p>}
         <p class="onboarding-intro">{t("onboardingIntro")}</p>
 
         <label class="field">

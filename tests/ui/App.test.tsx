@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/preact";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/preact";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { setLanguage } from "../../src/i18n";
 import { App } from "../../src/ui/App";
 import { STATE_KEY } from "../../src/storage/localStorage";
@@ -533,5 +533,35 @@ describe("App with two people", () => {
     expect(screen.queryByText("Abgeglichen")).toBeNull();
     expect(screen.queryByText("Wird abgeglichen …")).toBeNull();
     expect(screen.queryByText("Nur auf diesem Gerät")).toBeNull();
+  });
+
+  it("has no device reset in settings any more", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen öffnen" }));
+    expect(screen.queryByRole("button", { name: "Gerät zurücksetzen" })).toBeNull();
+  });
+
+  it("asks for the access code again when the server rejects it", async () => {
+    vi.stubEnv("VITE_SYNC_URL", "https://sync.example");
+    const storage = storedAs("a");
+    const fetchImpl = vi
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve(new Response(JSON.stringify({ error: "unauthorised" }), { status: 401 })),
+      );
+    vi.stubGlobal("fetch", fetchImpl);
+
+    render(<App storage={storage} now={now} />);
+
+    // The rejected code is thrown away and the setup screen comes back,
+    // which is the only way back now that settings has no reset.
+    await waitFor(() => expect(screen.getByLabelText("Zugangscode")).toBeTruthy());
+    expect(
+      screen.getByText("Der Zugangscode wurde abgelehnt. Bitte gib ihn erneut ein."),
+    ).toBeTruthy();
+    expect(storage.getItem("todo.accessCode")).toBeNull();
+
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 });

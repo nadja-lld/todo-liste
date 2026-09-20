@@ -10,20 +10,6 @@ import { SettingsSheet } from "../../src/ui/SettingsSheet";
 const now = new Date(2026, 8, 14, 9, 0);
 const NAMES = { a: "Person 1", b: "Person 2" };
 
-function fakeStorage(): Storage {
-  const data = new Map<string, string>();
-  return {
-    get length() {
-      return data.size;
-    },
-    clear: () => data.clear(),
-    getItem: (key) => data.get(key) ?? null,
-    key: (index) => [...data.keys()][index] ?? null,
-    removeItem: (key) => void data.delete(key),
-    setItem: (key, value) => void data.set(key, value),
-  };
-}
-
 function initial(listName: string) {
   return createInitialState(listName, NAMES, now);
 }
@@ -42,7 +28,6 @@ function harness(initial: AppState, overrides: Partial<Parameters<typeof Setting
   const props = () => ({
     state: current,
     identity: "a" as const,
-    storage: fakeStorage(),
     syncStatus: "idle" as const,
     now: () => now,
     today: "2026-09-14",
@@ -106,30 +91,6 @@ describe("SettingsSheet", () => {
   it("shows the sync status", () => {
     harness(initial("A"), { syncStatus: "offline" as const });
     expect(screen.getByText("Offline — wird nachgeholt")).toBeTruthy();
-  });
-
-  it("clears the device settings after confirmation", () => {
-    const storage = fakeStorage();
-    storage.setItem("todo.identity", "a");
-    storage.setItem("todo.accessCode", "s3cret");
-    const reload = vi.fn();
-    Object.defineProperty(window, "location", {
-      configurable: true,
-      value: { reload },
-    });
-    harness(initial("A"), { storage, confirm: () => true });
-    fireEvent.click(screen.getByRole("button", { name: "Gerät zurücksetzen" }));
-    expect(storage.getItem("todo.accessCode")).toBeNull();
-    expect(storage.getItem("todo.identity")).toBeNull();
-    expect(reload).toHaveBeenCalled();
-  });
-
-  it("keeps the device settings when the reset is declined", () => {
-    const storage = fakeStorage();
-    storage.setItem("todo.accessCode", "s3cret");
-    harness(initial("A"), { storage, confirm: () => false });
-    fireEvent.click(screen.getByRole("button", { name: "Gerät zurücksetzen" }));
-    expect(storage.getItem("todo.accessCode")).toBe("s3cret");
   });
 
   it("deletes an empty list without asking for confirmation", () => {

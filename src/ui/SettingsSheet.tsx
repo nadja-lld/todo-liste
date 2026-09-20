@@ -3,14 +3,12 @@ import { listsOf, tasksOf } from "../domain/selectors";
 import { addList, clearCompleted, deleteList, moveList, renameList } from "../domain/state";
 import type { AppState, UserId } from "../domain/types";
 import { t } from "../i18n";
-import { clearDeviceSettings } from "../storage/deviceSettings";
 import { syncStatusKey, type SyncStatus } from "../sync/status";
 import { Sheet } from "./Sheet";
 
 interface Props {
   state: AppState;
   identity: UserId;
-  storage: Storage;
   syncStatus: SyncStatus;
   now: () => Date;
   onUpdate: (fn: (state: AppState) => AppState) => void;
@@ -23,7 +21,6 @@ interface Props {
 export function SettingsSheet({
   state,
   identity,
-  storage,
   syncStatus,
   now,
   onUpdate,
@@ -118,19 +115,6 @@ export function SettingsSheet({
 
       <h3 class="section-title">{t("syncStatus")}</h3>
       <p class="settings-status">{t(syncStatusKey(syncStatus))}</p>
-      <button
-        type="button"
-        class="secondary-button secondary-button--danger"
-        onClick={() => {
-          if (confirm(t("confirmResetDevice"))) {
-            clearDeviceSettings(storage);
-            window.location.reload();
-          }
-        }}
-      >
-        {t("resetDevice")}
-      </button>
-
       <h3 class="section-title">{t("data")}</h3>
       <button
         type="button"

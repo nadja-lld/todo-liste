@@ -5,6 +5,7 @@ import { addTask, deleteTask, markTaskSeen, toggleTask, updateTask } from "../do
 import type { Task, UserId } from "../domain/types";
 import { t } from "../i18n";
 import {
+  clearDeviceSettings,
   loadDeviceSettings,
   saveAccessCode,
   saveIdentity,
@@ -77,6 +78,13 @@ export function App({ storage, now = () => new Date() }: AppProps) {
   const today = todayIso(now());
   const tomorrow = addDays(today, 1);
 
+  const codeRejected = sync.status === "auth-error";
+  useEffect(() => {
+    if (!codeRejected) return;
+    clearDeviceSettings(effectiveStorage);
+    setDevice(loadDeviceSettings(effectiveStorage));
+  }, [codeRejected, effectiveStorage]);
+
   const completeOnboarding = useCallback(
     (chosen: UserId, accessCode: string) => {
       saveIdentity(effectiveStorage, chosen);
@@ -87,7 +95,13 @@ export function App({ storage, now = () => new Date() }: AppProps) {
   );
 
   if (syncUrl !== null && device.identity === null) {
-    return <Onboarding names={userNames()} onDone={completeOnboarding} />;
+    return (
+      <Onboarding
+        names={userNames()}
+        notice={codeRejected ? t("syncAuthFailed") : undefined}
+        onDone={completeOnboarding}
+      />
+    );
   }
 
   const ownTasks = tasksOf(app.state, identity);
@@ -141,7 +155,6 @@ export function App({ storage, now = () => new Date() }: AppProps) {
       {(app.saveFailed || !storageAvailable) && (
         <p class="banner banner--error">{t("saveFailed")}</p>
       )}
-      {sync.status === "auth-error" && <p class="banner banner--error">{t("syncAuthFailed")}</p>}
 
       <ListSwitcher lists={lists} view={view} onSelect={setView} />
 
@@ -211,7 +224,6 @@ export function App({ storage, now = () => new Date() }: AppProps) {
         <SettingsSheet
           state={app.state}
           identity={identity}
-          storage={effectiveStorage}
           syncStatus={sync.status}
           now={now}
           onUpdate={app.update}

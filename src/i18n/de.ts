@@ -71,11 +71,7 @@ export const de = {
   syncStatusOffline: "Offline — wird nachgeholt",
   syncStatusError: "Abgleich fehlgeschlagen",
   syncStatusDisabled: "Nur auf diesem Gerät",
-  syncAuthFailed:
-    "Der Zugangscode wurde abgelehnt. Setze das Gerät in den Einstellungen zurück und gib ihn neu ein.",
-  resetDevice: "Gerät zurücksetzen",
-  confirmResetDevice:
-    "Zugangscode und Identität auf diesem Gerät löschen? Die Aufgaben bleiben erhalten.",
+  syncAuthFailed: "Der Zugangscode wurde abgelehnt. Bitte gib ihn erneut ein.",
   delegatedView: "Vergeben",
   createdByLabel: "Angelegt von",
   emptyDelegated: "Du hast nichts abgegeben",
