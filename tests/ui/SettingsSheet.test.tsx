@@ -88,9 +88,16 @@ describe("SettingsSheet", () => {
     expect(liveTasks(h.state)).toEqual([]);
   });
 
-  it("shows the sync status", () => {
+  it("shows the sync status on the heading line", () => {
     harness(initial("A"), { syncStatus: "offline" as const });
-    expect(screen.getByText("Offline — wird nachgeholt")).toBeTruthy();
+    const heading = screen.getByText("Status").closest("h3");
+    expect(heading?.textContent).toBe("StatusOffline — wird nachgeholt");
+  });
+
+  it("has no Daten heading above the single button", () => {
+    harness(initial("A"));
+    expect(screen.queryByText("Daten")).toBeNull();
+    expect(screen.getByRole("button", { name: "Erledigte Aufgaben löschen" })).toBeTruthy();
   });
 
   it("deletes an empty list without asking for confirmation", () => {

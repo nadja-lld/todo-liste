@@ -113,9 +113,10 @@ export function SettingsSheet({
         </button>
       </form>
 
-      <h3 class="section-title">{t("syncStatus")}</h3>
-      <p class="settings-status">{t(syncStatusKey(syncStatus))}</p>
-      <h3 class="section-title">{t("data")}</h3>
+      <h3 class="section-title section-title--row">
+        <span>{t("syncStatus")}</span>
+        <span class="section-title__value">{t(syncStatusKey(syncStatus))}</span>
+      </h3>
       <button
         type="button"
         class="secondary-button"

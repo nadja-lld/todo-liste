@@ -478,9 +478,18 @@ textarea:focus-visible {
 .sync-status--offline {
   color: var(--text-muted);
 }
-.settings-status {
-  margin: 0 0 var(--space-1);
-  color: var(--text-muted);
+/* Label left, current value right, on one line. */
+.section-title--row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.section-title__value {
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 15px;
 }
 .secondary-button--danger {
   border-color: var(--danger);
