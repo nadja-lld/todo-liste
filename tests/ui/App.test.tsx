@@ -323,6 +323,12 @@ describe("App with two people", () => {
     expect(screen.queryByRole("tab", { name: "Chris' Liste" })).toBeNull();
   });
 
+  it("keeps the handed-over tab last, behind the everyday views", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    const labels = screen.getAllByRole("tab").map((tab) => tab.textContent);
+    expect(labels).toEqual(["Heute", "Morgen", "Nadjas Liste", "Vergeben"]);
+  });
+
   it("shows only my own tasks", () => {
     render(<App storage={storedAs("a")} now={now} />);
     expect(screen.getByText("Meine Aufgabe")).toBeTruthy();

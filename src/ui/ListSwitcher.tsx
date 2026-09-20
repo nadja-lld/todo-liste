@@ -13,8 +13,9 @@ export function ListSwitcher({ lists, view, onSelect }: Props) {
   const entries: { id: ViewId; label: string }[] = [
     { id: "today", label: t("todayView") },
     { id: "tomorrow", label: t("tomorrowView") },
-    { id: "delegated", label: t("delegatedView") },
     ...lists.map((list) => ({ id: list.id, label: list.name })),
+    // Last: handing something over is the exception, not the daily view.
+    { id: "delegated", label: t("delegatedView") },
   ];
   return (
     <nav class="list-switcher" role="tablist">
