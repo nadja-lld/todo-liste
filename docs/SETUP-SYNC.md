@@ -23,7 +23,17 @@ Dann das Schema anlegen:
 npx wrangler d1 execute todo-sync --remote --file=./schema.sql
 ```
 
-## 2. Zugangscode erzeugen und hinterlegen
+## 2. Worker veröffentlichen
+
+```bash
+npx wrangler deploy
+```
+
+Der Befehl gibt die Worker-URL aus, etwa `https://todo-sync.<name>.workers.dev`. Notieren.
+
+Der Worker läuft jetzt, weist aber noch jede Anfrage ab — der Zugangscode fehlt.
+
+## 3. Zugangscode erzeugen und hinterlegen
 
 Der Code muss **generiert** sein, nicht ausgedacht: der Endpunkt ist öffentlich
 erreichbar und dieser eine Code schließt alles auf.
@@ -41,21 +51,30 @@ npx wrangler secret put ACCESS_CODE
 
 und den Code einfügen, wenn danach gefragt wird.
 
-## 3. Worker veröffentlichen
+## 4. Worker prüfen, bevor die App im Spiel ist
 
 ```bash
-npx wrangler deploy
+curl -i -H "Authorization: Bearer <CODE>" https://todo-sync.<name>.workers.dev/state
 ```
 
-Der Befehl gibt die Worker-URL aus, etwa `https://todo-sync.<name>.workers.dev`.
+Erwartet: `HTTP/2 200` und `{"version":0,"state":null}` — noch kein Dokument gespeichert.
 
-## 4. GitHub einrichten
+Ohne den Header muss `401` kommen:
+
+```bash
+curl -i https://todo-sync.<name>.workers.dev/state
+```
+
+Kommt bei der ersten Anfrage etwas anderes als 200, stimmt der Code nicht oder das
+Secret wurde nicht gesetzt. Erst weitermachen, wenn beide Antworten passen.
+
+## 5. GitHub einrichten
 
 Im Repository unter **Settings → Secrets and variables → Actions**:
 
 | Art | Name | Wert |
 |-----|------|------|
-| Variable | `SYNC_URL` | die Worker-URL aus Schritt 3 |
+| Variable | `SYNC_URL` | die Worker-URL aus Schritt 2 |
 | Secret | `CLOUDFLARE_API_TOKEN` | Cloudflare-API-Token mit Worker- und D1-Rechten |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | Account-ID aus dem Cloudflare-Dashboard |
 
@@ -65,7 +84,7 @@ Bundle. Der Zugangscode tut das nicht.
 Danach einmal auf `main` pushen (oder den Workflow „Deploy to GitHub Pages" von Hand
 starten), damit die App mit gesetzter `SYNC_URL` neu gebaut wird.
 
-## 5. Auf beiden Handys
+## 6. Auf beiden Handys
 
 1. https://nadja-lld.github.io/todo-liste/ in Safari öffnen
 2. Teilen → „Zum Home-Bildschirm"
