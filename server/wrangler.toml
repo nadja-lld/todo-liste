@@ -1,0 +1,14 @@
+name = "todo-sync"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# The origin the PWA is served from. Anything else is refused by CORS.
+[vars]
+ALLOWED_ORIGIN = "https://nadja-lld.github.io"
+
+# ACCESS_CODE is a secret, never a var:
+#   wrangler secret put ACCESS_CODE
+[[d1_databases]]
+binding = "DB"
+database_name = "todo-sync"
+database_id = "REPLACE_WITH_DATABASE_ID"
