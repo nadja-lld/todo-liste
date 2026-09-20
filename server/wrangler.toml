@@ -11,4 +11,4 @@ ALLOWED_ORIGIN = "https://nadja-lld.github.io"
 [[d1_databases]]
 binding = "DB"
 database_name = "todo-sync"
-database_id = "REPLACE_WITH_DATABASE_ID"
+database_id = "a02e2c88-dcff-4ae0-921c-c8089540aeca"
