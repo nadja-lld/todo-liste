@@ -10,6 +10,7 @@ const lists: TodoList[] = [
   { id: "a", name: "A", position: 0, owner: "a", updatedAt: AT },
   { id: "b", name: "B", position: 1, owner: "a", updatedAt: AT },
 ];
+const USER_NAMES = { a: "Nadja", b: "Gerald" } as const;
 const task: Task = {
   id: "t1",
   listId: "a",
@@ -31,6 +32,9 @@ describe("TaskDetailSheet", () => {
       <TaskDetailSheet
         task={task}
         lists={lists}
+        userNames={USER_NAMES}
+        assignedTo="a"
+        onAssign={vi.fn()}
         onPatch={onPatch}
         onDelete={vi.fn()}
         onClose={vi.fn()}
@@ -48,6 +52,9 @@ describe("TaskDetailSheet", () => {
       <TaskDetailSheet
         task={task}
         lists={lists}
+        userNames={USER_NAMES}
+        assignedTo="a"
+        onAssign={vi.fn()}
         onPatch={onPatch}
         onDelete={vi.fn()}
         onClose={vi.fn()}
@@ -69,6 +76,9 @@ describe("TaskDetailSheet", () => {
       <TaskDetailSheet
         task={{ ...task, dueDate: "2026-10-01" }}
         lists={lists}
+        userNames={USER_NAMES}
+        assignedTo="a"
+        onAssign={vi.fn()}
         onPatch={onPatch}
         onDelete={vi.fn()}
         onClose={vi.fn()}
@@ -85,6 +95,9 @@ describe("TaskDetailSheet", () => {
       <TaskDetailSheet
         task={task}
         lists={lists}
+        userNames={USER_NAMES}
+        assignedTo="a"
+        onAssign={vi.fn()}
         onPatch={vi.fn()}
         onDelete={onDelete}
         onClose={onClose}
@@ -102,6 +115,9 @@ describe("TaskDetailSheet", () => {
       <TaskDetailSheet
         task={task}
         lists={lists}
+        userNames={USER_NAMES}
+        assignedTo="a"
+        onAssign={vi.fn()}
         onPatch={vi.fn()}
         onDelete={onDelete}
         onClose={vi.fn()}
@@ -110,5 +126,58 @@ describe("TaskDetailSheet", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Aufgabe löschen" }));
     expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it("offers both people under the assignee section", () => {
+    render(
+      <TaskDetailSheet
+        task={task}
+        lists={lists}
+        userNames={USER_NAMES}
+        assignedTo="a"
+        onAssign={vi.fn()}
+        onPatch={vi.fn()}
+        onDelete={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const select = screen.getByLabelText("Zu erledigen von") as HTMLSelectElement;
+    expect([...select.options].map((o) => o.textContent)).toEqual(["Nadja", "Gerald"]);
+    expect(select.value).toBe("a");
+  });
+
+  it("reports the chosen person", () => {
+    const onAssign = vi.fn();
+    render(
+      <TaskDetailSheet
+        task={task}
+        lists={lists}
+        userNames={USER_NAMES}
+        assignedTo="a"
+        onAssign={onAssign}
+        onPatch={vi.fn()}
+        onDelete={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("Zu erledigen von"), { target: { value: "b" } });
+    expect(onAssign).toHaveBeenCalledWith("t1", "b");
+  });
+
+  it("hides the list selector for a task that is no longer on one of my lists", () => {
+    render(
+      <TaskDetailSheet
+        task={{ ...task, listId: "fremde-liste" }}
+        lists={lists}
+        userNames={USER_NAMES}
+        assignedTo="b"
+        onAssign={vi.fn()}
+        onPatch={vi.fn()}
+        onDelete={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.queryByLabelText("Liste")).toBeNull();
+    expect(screen.getByLabelText("Zu erledigen von")).toBeTruthy();
   });
 });

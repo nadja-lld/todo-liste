@@ -250,9 +250,6 @@ textarea:focus-visible {
   display: flex;
   gap: var(--space-1);
 }
-.add-bar__target {
-  margin: 0;
-}
 .add-bar input {
   flex: 1;
   min-height: 44px;

@@ -335,33 +335,64 @@ describe("App with two people", () => {
     expect(screen.queryByText("Meine Aufgabe")).toBeNull();
   });
 
-  it("puts a delegated task on the other person's list, not mine", () => {
-    const storage = storedAs("a");
-    render(<App storage={storage} now={now} />);
-    fireEvent.click(screen.getByRole("radio", { name: "Für Chris" }));
-    const input = screen.getByPlaceholderText("Neue Aufgabe");
-    fireEvent.input(input, { target: { value: "Müll rausbringen" } });
-    fireEvent.submit(input.closest("form")!);
-
-    expect(screen.queryByText("Müll rausbringen")).toBeNull();
-    const saved = JSON.parse(storage.getItem(STATE_KEY)!);
-    const created = saved.tasks.find(
-      (task: { title: string }) => task.title === "Müll rausbringen",
-    );
-    expect(created.listId).toBe("lb");
-    expect(created.createdBy).toBe("a");
-    expect(created.seenAt).toBeUndefined();
+  it("has no target switcher in the add bar any more", () => {
+    render(<App storage={storedAs("a")} now={now} />);
+    expect(screen.queryByRole("radio", { name: /^Für/ })).toBeNull();
   });
 
-  it("returns the target to me after a delegated task is added", () => {
-    render(<App storage={storedAs("a")} now={now} />);
-    fireEvent.click(screen.getByRole("radio", { name: "Für Chris" }));
+  it("puts a new task on my own list by default", () => {
+    const storage = storedAs("a");
+    render(<App storage={storage} now={now} />);
     const input = screen.getByPlaceholderText("Neue Aufgabe");
-    fireEvent.input(input, { target: { value: "Müll" } });
+    fireEvent.input(input, { target: { value: "Selbst" } });
     fireEvent.submit(input.closest("form")!);
-    expect(screen.getByRole("radio", { name: "Für mich" }).getAttribute("aria-checked")).toBe(
-      "true",
-    );
+
+    expect(screen.getByText("Selbst")).toBeTruthy();
+    const saved = JSON.parse(storage.getItem(STATE_KEY)!);
+    const created = saved.tasks.find((t: { title: string }) => t.title === "Selbst");
+    expect(created.listId).toBe("la");
+  });
+
+  it("dates a task created in the Heute view so it stays visible there", () => {
+    const storage = storedAs("a");
+    render(<App storage={storage} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Heute" }));
+    const input = screen.getByPlaceholderText("Neue Aufgabe");
+    fireEvent.input(input, { target: { value: "Heute faellig" } });
+    fireEvent.submit(input.closest("form")!);
+
+    expect(screen.getByText("Heute faellig")).toBeTruthy();
+    const saved = JSON.parse(storage.getItem(STATE_KEY)!);
+    const created = saved.tasks.find((t: { title: string }) => t.title === "Heute faellig");
+    expect(created.dueDate).toBe("2026-09-14");
+    expect(created.listId).toBe("la");
+  });
+
+  it("dates a task created in the Morgen view for tomorrow", () => {
+    const storage = storedAs("a");
+    render(<App storage={storage} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Morgen" }));
+    const input = screen.getByPlaceholderText("Neue Aufgabe");
+    fireEvent.input(input, { target: { value: "Morgen faellig" } });
+    fireEvent.submit(input.closest("form")!);
+
+    expect(screen.getByText("Morgen faellig")).toBeTruthy();
+    const saved = JSON.parse(storage.getItem(STATE_KEY)!);
+    const created = saved.tasks.find((t: { title: string }) => t.title === "Morgen faellig");
+    expect(created.dueDate).toBe("2026-09-15");
+  });
+
+  it("hands a task over through the detail sheet and closes it", () => {
+    const storage = storedAs("a");
+    render(<App storage={storage} now={now} />);
+    fireEvent.click(screen.getByRole("button", { name: /^Meine Aufgabe/ }));
+    fireEvent.change(screen.getByLabelText("Zu erledigen von"), { target: { value: "b" } });
+
+    // Gone from my view, and the sheet cannot stay open on a task I no longer own.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByText("Meine Aufgabe")).toBeNull();
+    const saved = JSON.parse(storage.getItem(STATE_KEY)!);
+    expect(saved.tasks.find((t: { id: string }) => t.id === "t-a").listId).toBe("lb");
   });
 
   it("marks a task the other person delegated to me and clears it once opened", () => {

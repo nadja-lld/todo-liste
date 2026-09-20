@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { addDays, dueBucket, todayIso } from "../domain/dates";
-import { inboxListId, listsOf, otherUser, tasksOf, userName } from "../domain/selectors";
+import { inboxListId, listsOf, tasksOf, userName } from "../domain/selectors";
 import { addTask, deleteTask, markTaskSeen, toggleTask, updateTask } from "../domain/state";
 import type { Task, UserId } from "../domain/types";
 import { t } from "../i18n";
@@ -56,7 +56,6 @@ export function App({ storage, now = () => new Date() }: AppProps) {
     storage: effectiveStorage,
     now,
   });
-  const other = otherUser(identity);
   const lists = listsOf(app.state, identity);
   const [view, setView] = useState<ViewId>(() => listsOf(app.state, identity)[0]?.id ?? "today");
   useEffect(() => {
@@ -154,17 +153,16 @@ export function App({ storage, now = () => new Date() }: AppProps) {
       />
 
       <AddTaskBar
-        canAddForSelf={activeListId !== null}
-        identity={identity}
-        otherId={other}
-        otherName={userName(app.state, other)}
-        onAdd={(title, assignTo) =>
+        disabled={lists.length === 0}
+        onAdd={(title) =>
           app.update((state) => {
-            // My own tasks go into the list I am looking at; a delegated task
-            // goes to the other person's inbox, because I do not see their lists.
-            const listId = assignTo === identity ? activeListId : inboxListId(state, assignTo);
+            // A new task is always mine. The dated overviews have no list of
+            // their own, so it lands in my inbox and carries the day it was
+            // created for — otherwise it would vanish the moment it is added.
+            const listId = activeListId ?? inboxListId(state, identity);
             if (listId === null) return state;
-            return addTask(state, { listId, title, createdBy: identity }, now());
+            const dueDate = view === "today" ? today : view === "tomorrow" ? tomorrow : undefined;
+            return addTask(state, { listId, title, createdBy: identity, dueDate }, now());
           })
         }
       />
@@ -173,6 +171,19 @@ export function App({ storage, now = () => new Date() }: AppProps) {
         <TaskDetailSheet
           task={selectedTask}
           lists={lists}
+          userNames={{ a: userName(app.state, "a"), b: userName(app.state, "b") }}
+          assignedTo={identity}
+          onAssign={(taskId, userId) => {
+            if (userId === identity) return;
+            // Handing a task over moves it to the other person's inbox, which
+            // is the only list of theirs I can address. It leaves my view at
+            // that moment, so the sheet has nothing left to show.
+            app.update((state) => {
+              const target = inboxListId(state, userId);
+              return target === null ? state : updateTask(state, taskId, { listId: target }, now());
+            });
+            setSelectedTaskId(null);
+          }}
           onPatch={(taskId, patch) =>
             app.update((state) => updateTask(state, taskId, patch, now()))
           }

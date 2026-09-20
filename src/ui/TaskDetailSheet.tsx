@@ -3,10 +3,12 @@ import type { TaskPatch } from "../domain/state";
 import {
   PRIORITIES,
   RECURRENCES,
+  USER_IDS,
   type Priority,
   type Recurrence,
   type Task,
   type TodoList,
+  type UserId,
 } from "../domain/types";
 import { t, type MessageKey } from "../i18n";
 import { Sheet } from "./Sheet";
@@ -14,6 +16,11 @@ import { Sheet } from "./Sheet";
 interface Props {
   task: Task;
   lists: TodoList[];
+  /** Display names of both people, keyed by id. */
+  userNames: Record<UserId, string>;
+  /** Who the task currently belongs to. */
+  assignedTo: UserId;
+  onAssign: (taskId: string, userId: UserId) => void;
   onPatch: (taskId: string, patch: TaskPatch) => void;
   onDelete: (taskId: string) => void;
   onClose: () => void;
@@ -35,6 +42,9 @@ const RECURRENCE_KEYS: Record<Recurrence, MessageKey> = {
 export function TaskDetailSheet({
   task,
   lists,
+  userNames,
+  assignedTo,
+  onAssign,
   onPatch,
   onDelete,
   onClose,
@@ -75,18 +85,34 @@ export function TaskDetailSheet({
       </label>
 
       <label class="field">
-        <span>{t("list")}</span>
+        <span>{t("assignee")}</span>
         <select
-          value={task.listId}
-          onChange={(e) => onPatch(task.id, { listId: (e.target as HTMLSelectElement).value })}
+          value={assignedTo}
+          onChange={(e) => onAssign(task.id, (e.target as HTMLSelectElement).value as UserId)}
         >
-          {lists.map((list) => (
-            <option key={list.id} value={list.id}>
-              {list.name}
+          {USER_IDS.map((id) => (
+            <option key={id} value={id}>
+              {userNames[id]}
             </option>
           ))}
         </select>
       </label>
+
+      {lists.some((list) => list.id === task.listId) && (
+        <label class="field">
+          <span>{t("list")}</span>
+          <select
+            value={task.listId}
+            onChange={(e) => onPatch(task.id, { listId: (e.target as HTMLSelectElement).value })}
+          >
+            {lists.map((list) => (
+              <option key={list.id} value={list.id}>
+                {list.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <label class="field">
         <span>{t("priority")}</span>

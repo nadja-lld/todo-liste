@@ -52,6 +52,8 @@ event listeners belong in `useSync`, which is what keeps the conflict path testa
 - Deletions are tombstones (`deletedAt`), never removals. Read through the selectors in
   `src/domain/selectors.ts` (`liveLists`, `tasksOf`, …) so tombstones stay out of the UI.
 - A task belongs to whoever owns its list. There is no owner field on `Task`.
+  Handing one over means moving it to the other person's inbox; that is what the
+  "assignee" field in `TaskDetailSheet` does. New tasks are always the creator's.
 - Components receive state and callbacks as props; only `App.tsx` owns state via `useAppState`.
 - Every visible string goes through `t("key")`. Add keys to `de.ts` and `en.ts` together.
 - Dates: `dueDate` is `YYYY-MM-DD`; use helpers in `src/domain/dates.ts`, never `new Date(dueDate)` directly.

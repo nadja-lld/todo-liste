@@ -15,6 +15,8 @@ export interface NewTaskInput {
   listId: string;
   title: string;
   createdBy: UserId;
+  /** Set when the task is created from a dated view, so it stays visible there. */
+  dueDate?: string;
 }
 
 export type TaskPatch = Partial<
@@ -65,6 +67,7 @@ export function addTask(state: AppState, input: NewTaskInput, now: Date): AppSta
     title,
     priority: "medium",
     recurrence: "none",
+    dueDate: input.dueDate,
     createdAt: at,
     createdBy: input.createdBy,
     // A task you put on your own list is not news to you.
