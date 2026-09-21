@@ -32,6 +32,21 @@ export type PutResult =
  */
 const REQUEST_TIMEOUT_MS = 15000;
 
+/**
+ * `AbortSignal.timeout` only exists from Safari 16 on. Without a fallback an
+ * older phone would throw on every single request and report itself as
+ * permanently offline, with nothing to explain why.
+ */
+function deadline(): AbortSignal | undefined {
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  }
+  if (typeof AbortController === "undefined") return undefined;
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  return controller.signal;
+}
+
 export interface SyncClient {
   /** null when the server holds no document yet. */
   get(): Promise<RemoteDocument | null>;
@@ -66,7 +81,7 @@ export function createSyncClient(
     Authorization: `Bearer ${accessCode}`,
     "Content-Type": "application/json",
   };
-  const timeout = () => AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const timeout = deadline;
 
   return {
     async get(): Promise<RemoteDocument | null> {

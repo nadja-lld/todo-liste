@@ -65,14 +65,52 @@ describe("runSyncCycle merging", () => {
     expect(c.put).toHaveBeenCalledWith(2, result.state);
   });
 
-  it("does not write when the merge changes nothing", async () => {
-    const shared = withTask(base(), "Gleich");
-    const c = client({ get: vi.fn().mockResolvedValue({ version: 4, state: shared }) });
+  it("canonicalises a stored document once and then goes quiet", async () => {
+    const twoTasks = withTask(withTask(base(), "Eins"), "Zwei");
+    // A document stored before the ordering rule existed.
+    const shared: AppState = { ...twoTasks, tasks: [...twoTasks.tasks].reverse() };
+    // First pass: the stored document predates the canonical ordering, so one
+    // write is expected to bring it in line.
+    const first = client({
+      get: vi.fn().mockResolvedValue({ version: 4, state: shared }),
+      put: vi.fn().mockResolvedValue({ ok: true, version: 5 }),
+    });
+    const canonical = await runSyncCycle(first, shared, NOW, false);
+    expect(canonical.outcome).toBe("synced");
+    if (canonical.outcome !== "synced") throw new Error("expected a sync");
+    expect(first.put).toHaveBeenCalledTimes(1);
 
-    const result = await runSyncCycle(c, shared, NOW, false);
+    // Second pass against what was just written: nothing left to do. Without
+    // this the two devices would rewrite the document at every poll forever.
+    const second = client({
+      get: vi.fn().mockResolvedValue({ version: 5, state: canonical.state }),
+    });
+    const result = await runSyncCycle(second, canonical.state, NOW, false);
+    expect(result).toEqual({ outcome: "unchanged", state: canonical.state, version: 5 });
+    expect(second.put).not.toHaveBeenCalled();
+  });
 
-    expect(result).toEqual({ outcome: "unchanged", state: shared, version: 4 });
-    expect(c.put).not.toHaveBeenCalled();
+  it("settles after two devices each add something, instead of writing forever", async () => {
+    const shared = base();
+    const listA = inboxListId(shared, "a")!;
+    const deviceA = addTask(shared, { listId: listA, title: "von A", createdBy: "a" }, NOW);
+    const deviceB = addTask(shared, { listId: listA, title: "von B", createdBy: "a" }, NOW);
+
+    // A syncs first and its merge becomes the shared document.
+    const aClient = client({
+      get: vi.fn().mockResolvedValue({ version: 1, state: deviceB }),
+      put: vi.fn().mockResolvedValue({ ok: true, version: 2 }),
+    });
+    const afterA = await runSyncCycle(aClient, deviceA, NOW, false);
+    if (afterA.outcome !== "synced") throw new Error("expected a sync");
+
+    // B then merges against it and must find nothing to write.
+    const bClient = client({
+      get: vi.fn().mockResolvedValue({ version: 2, state: afterA.state }),
+    });
+    const afterB = await runSyncCycle(bClient, deviceB, NOW, false);
+    expect(afterB.outcome).toBe("unchanged");
+    expect(bClient.put).not.toHaveBeenCalled();
   });
 
   it("re-merges against the document a conflict returned and writes again", async () => {

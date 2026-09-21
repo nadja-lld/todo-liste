@@ -32,6 +32,13 @@ function pick<T extends Versioned>(x: T, y: T): T {
   return canonical(x) >= canonical(y) ? x : y;
 }
 
+/**
+ * Sorted by id, not by insertion. Without that the result depends on which side
+ * you merge from: one device ends up with [t1, t2] and the other with [t2, t1],
+ * same content either way. The sync cycle compares documents literally, so both
+ * would see a difference from the server on every poll and write again — for
+ * good.
+ */
 function mergeById<T extends Versioned>(local: T[], remote: T[]): T[] {
   const merged = new Map<string, T>();
   for (const item of local) merged.set(item.id, item);
@@ -39,7 +46,7 @@ function mergeById<T extends Versioned>(local: T[], remote: T[]): T[] {
     const existing = merged.get(item.id);
     merged.set(item.id, existing ? pick(existing, item) : item);
   }
-  return [...merged.values()];
+  return [...merged.values()].sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
 }
 
 /**

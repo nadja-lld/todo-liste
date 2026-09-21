@@ -190,3 +190,22 @@ describe("mergeState", () => {
     expect(normalise(mergeState(once, once, NOW))).toEqual(normalise(once));
   });
 });
+
+describe("mergeState convergence", () => {
+  it("produces a byte-identical document whichever side merges", () => {
+    const local = state({ tasks: [task("t1"), task("t3")] });
+    const remote = state({ tasks: [task("t2"), task("t1")] });
+    // Same content, opposite input order: the two devices must not disagree
+    // about the result, or each would keep rewriting it for the other.
+    expect(JSON.stringify(mergeState(local, remote, NOW))).toBe(
+      JSON.stringify(mergeState(remote, local, NOW)),
+    );
+  });
+
+  it("re-merging its own output changes nothing at all", () => {
+    const local = state({ tasks: [task("t3"), task("t1")] });
+    const remote = state({ tasks: [task("t2")] });
+    const once = mergeState(local, remote, NOW);
+    expect(JSON.stringify(mergeState(once, once, NOW))).toBe(JSON.stringify(once));
+  });
+});

@@ -117,4 +117,20 @@ describe("createSyncClient.put", () => {
       expect(call[1].signal).toBeInstanceOf(AbortSignal);
     }
   });
+
+  it("still sets a deadline on a browser without AbortSignal.timeout", async () => {
+    const original = AbortSignal.timeout;
+    // Safari before 16 has AbortController but not AbortSignal.timeout.
+    (AbortSignal as unknown as { timeout?: unknown }).timeout = undefined;
+    try {
+      const fetchImpl = vi
+        .fn()
+        .mockImplementation(() => Promise.resolve(respond(200, { version: 0, state: null })));
+      await createSyncClient("https://sync.example", "c", fetchImpl).get();
+      expect(fetchImpl.mock.calls[0]![1].signal).toBeInstanceOf(AbortSignal);
+      expect(fetchImpl.mock.calls[0]![1].signal.aborted).toBe(false);
+    } finally {
+      (AbortSignal as unknown as { timeout?: unknown }).timeout = original;
+    }
+  });
 });

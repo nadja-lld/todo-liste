@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { addDays, dueBucket, todayIso } from "../domain/dates";
+import { addDays, dueBucket } from "../domain/dates";
 import {
   delegatedBy,
   inboxListId,
@@ -30,6 +30,7 @@ import { TaskList } from "./TaskList";
 import { userName, userNames } from "./userNames";
 import { useAppState } from "./useAppState";
 import { useSync } from "./useSync";
+import { useToday } from "./useToday";
 
 function isOverviewView(view: ViewId): boolean {
   return view === "today" || view === "tomorrow" || view === "delegated";
@@ -77,7 +78,7 @@ export function App({ storage, now = () => new Date() }: AppProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showDelegatedCompleted, setShowDelegatedCompleted] = useState(false);
-  const today = todayIso(now());
+  const today = useToday(now);
   const tomorrow = addDays(today, 1);
 
   const codeRejected = sync.status === "auth-error";
