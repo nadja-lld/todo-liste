@@ -10,14 +10,24 @@ interface Props {
   assigneeName: string;
   showCompleted: boolean;
   onShowCompletedChange: (open: boolean) => void;
+  onOpen: (taskId: string) => void;
 }
 
-function Row({ task, today, assigneeName }: { task: Task; today: string; assigneeName: string }) {
+interface RowProps {
+  task: Task;
+  today: string;
+  assigneeName: string;
+  onOpen: (taskId: string) => void;
+}
+
+function Row({ task, today, assigneeName, onOpen }: RowProps) {
   const isDone = task.completedAt !== undefined;
   return (
     <li class={`task-row ${isDone ? "task-row--done" : ""}`}>
       <span class={`priority-dot priority-dot--${task.priority}`} aria-hidden="true" />
-      <div class="task-body task-body--static">
+      {/* No checkbox: finishing it is the other person's call. Opening it is
+          not, because the wording or the date may still need fixing. */}
+      <button type="button" class="task-body" onClick={() => onOpen(task.id)}>
         <span class="task-title">{task.title}</span>
         <span class="task-meta">
           <span class={`delegated-state delegated-state--${isDone ? "done" : "open"}`}>
@@ -30,7 +40,7 @@ function Row({ task, today, assigneeName }: { task: Task; today: string; assigne
             </span>
           )}
         </span>
-      </div>
+      </button>
     </li>
   );
 }
@@ -49,7 +59,13 @@ export function DelegatedList(props: Props) {
       ) : (
         <ul>
           {open.map((task) => (
-            <Row key={task.id} task={task} today={props.today} assigneeName={props.assigneeName} />
+            <Row
+              key={task.id}
+              task={task}
+              today={props.today}
+              assigneeName={props.assigneeName}
+              onOpen={props.onOpen}
+            />
           ))}
         </ul>
       )}
@@ -69,6 +85,7 @@ export function DelegatedList(props: Props) {
                 task={task}
                 today={props.today}
                 assigneeName={props.assigneeName}
+                onOpen={props.onOpen}
               />
             ))}
           </ul>

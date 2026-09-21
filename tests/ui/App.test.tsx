@@ -564,4 +564,70 @@ describe("App with two people", () => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
   });
+
+  /** A task Nadja handed to Gerald, still open and never opened by him. */
+  function withHandedOver() {
+    const state = twoPersonState();
+    state.tasks.push({
+      id: "t-weg",
+      listId: "lb",
+      title: "Müll rausbringen",
+      priority: "medium",
+      recurrence: "none",
+      createdAt: "2026-09-14T07:30:00.000Z",
+      createdBy: "a",
+      updatedAt: "2026-09-14T07:30:00.000Z",
+    } as (typeof state.tasks)[number]);
+    return fakeStorage({
+      [STATE_KEY]: JSON.stringify(state),
+      "todo.identity": "a",
+      "todo.accessCode": "s3cret",
+    });
+  }
+
+  it("opens a handed-over task for editing", () => {
+    const storage = withHandedOver();
+    render(<App storage={storage} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Vergeben" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Müll rausbringen/ }));
+
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    fireEvent.input(screen.getByLabelText("Titel"), { target: { value: "Müll und Altglas" } });
+    fireEvent.blur(screen.getByLabelText("Titel"));
+
+    const saved = JSON.parse(storage.getItem(STATE_KEY)!);
+    expect(saved.tasks.find((t: { id: string }) => t.id === "t-weg").title).toBe(
+      "Müll und Altglas",
+    );
+  });
+
+  it("shows the handed-over task as belonging to the other person", () => {
+    render(<App storage={withHandedOver()} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Vergeben" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Müll rausbringen/ }));
+    expect((screen.getByLabelText("Zu erledigen von") as HTMLSelectElement).value).toBe("b");
+  });
+
+  it("does not clear the other person's new marker when I open what I gave them", () => {
+    const storage = withHandedOver();
+    render(<App storage={storage} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Vergeben" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Müll rausbringen/ }));
+
+    // Gerald has not seen it yet; my looking at it must not say otherwise.
+    const saved = JSON.parse(storage.getItem(STATE_KEY)!);
+    expect(saved.tasks.find((t: { id: string }) => t.id === "t-weg").seenAt).toBeUndefined();
+  });
+
+  it("takes a handed-over task back onto my own list", () => {
+    const storage = withHandedOver();
+    render(<App storage={storage} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Vergeben" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Müll rausbringen/ }));
+    fireEvent.change(screen.getByLabelText("Zu erledigen von"), { target: { value: "a" } });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    const saved = JSON.parse(storage.getItem(STATE_KEY)!);
+    expect(saved.tasks.find((t: { id: string }) => t.id === "t-weg").listId).toBe("la");
+  });
 });

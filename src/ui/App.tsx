@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { addDays, dueBucket, todayIso } from "../domain/dates";
-import { delegatedBy, inboxListId, listsOf, otherUser, tasksOf } from "../domain/selectors";
+import {
+  delegatedBy,
+  inboxListId,
+  listsOf,
+  otherUser,
+  ownerOfTask,
+  tasksOf,
+} from "../domain/selectors";
 import { addTask, deleteTask, markTaskSeen, toggleTask, updateTask } from "../domain/state";
 import type { Task, UserId } from "../domain/types";
 import { t } from "../i18n";
@@ -111,14 +118,28 @@ export function App({ storage, now = () => new Date() }: AppProps) {
       : view === "tomorrow"
         ? ownTasks.filter((task) => task.dueDate === tomorrow)
         : ownTasks.filter((task) => task.listId === activeListId);
-  const selectedTask = ownTasks.find((task) => task.id === selectedTaskId) ?? null;
+  const delegated = delegatedBy(app.state, identity);
+  // Tasks I handed over are editable too, so the sheet may show one of those.
+  const selectedTask =
+    ownTasks.find((task) => task.id === selectedTaskId) ??
+    delegated.find((task) => task.id === selectedTaskId) ??
+    null;
+  const selectedOwner = selectedTask
+    ? (ownerOfTask(app.state, selectedTask) ?? identity)
+    : identity;
 
   const newFromName = (task: Task): string | undefined =>
     task.createdBy !== identity && task.seenAt === undefined ? userName(task.createdBy) : undefined;
 
   const openTask = (taskId: string) => {
     setSelectedTaskId(taskId);
-    app.update((state) => markTaskSeen(state, taskId, now()));
+    app.update((state) => {
+      const task = state.tasks.find((candidate) => candidate.id === taskId);
+      // Only the owner looking at it clears the marker. Opening a task I handed
+      // over must not rob the other person of their "new from" badge.
+      if (!task || ownerOfTask(state, task) !== identity) return state;
+      return markTaskSeen(state, taskId, now());
+    });
   };
 
   return (
@@ -155,11 +176,12 @@ export function App({ storage, now = () => new Date() }: AppProps) {
 
       {view === "delegated" ? (
         <DelegatedList
-          tasks={delegatedBy(app.state, identity)}
+          tasks={delegated}
           today={today}
           assigneeName={userName(other)}
           showCompleted={showDelegatedCompleted}
           onShowCompletedChange={setShowDelegatedCompleted}
+          onOpen={openTask}
         />
       ) : (
         <TaskList
@@ -196,12 +218,12 @@ export function App({ storage, now = () => new Date() }: AppProps) {
           task={selectedTask}
           lists={lists}
           userNames={userNames()}
-          assignedTo={identity}
+          assignedTo={selectedOwner}
           onAssign={(taskId, userId) => {
-            if (userId === identity) return;
-            // Handing a task over moves it to the other person's inbox, which
-            // is the only list of theirs I can address. It leaves my view at
-            // that moment, so the sheet has nothing left to show.
+            if (userId === selectedOwner) return;
+            // Moving a task between people means moving it to that person's
+            // inbox, the only list of theirs this device can address. Either
+            // way it leaves the view it was opened from, so the sheet closes.
             app.update((state) => {
               const target = inboxListId(state, userId);
               return target === null ? state : updateTask(state, taskId, { listId: target }, now());
