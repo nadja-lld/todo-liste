@@ -229,9 +229,11 @@ textarea:focus-visible {
   color: var(--text-muted);
   padding: var(--space-3) 0;
 }
+.later,
 .completed {
   margin-top: var(--space-2);
 }
+.later summary,
 .completed summary {
   padding: var(--space-1) 0;
   color: var(--text-muted);

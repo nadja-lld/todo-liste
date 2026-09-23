@@ -18,8 +18,9 @@ interface Props {
 }
 
 export function TaskList(props: Props) {
-  const { open, completed } = splitTasks(props.tasks, props.today);
+  const { open, later, completed } = splitTasks(props.tasks, props.today);
   const sortedOpen = sortOpenTasks(open, props.today);
+  const sortedLater = sortOpenTasks(later, props.today);
   const listName = (task: Task) =>
     props.showListName ? props.lists.find((list) => list.id === task.listId)?.name : undefined;
 
@@ -41,6 +42,26 @@ export function TaskList(props: Props) {
             />
           ))}
         </ul>
+      )}
+      {/* Uncontrolled on purpose: it starts closed every time the list is shown,
+          which is the point of hiding these in the first place. */}
+      {sortedLater.length > 0 && (
+        <details class="later">
+          <summary>{t("laterSection", { count: sortedLater.length })}</summary>
+          <ul>
+            {sortedLater.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                today={props.today}
+                listName={listName(task)}
+                newFromName={props.newFromName(task)}
+                onToggle={props.onToggle}
+                onOpen={props.onOpen}
+              />
+            ))}
+          </ul>
+        </details>
       )}
       {completed.length > 0 && (
         <details

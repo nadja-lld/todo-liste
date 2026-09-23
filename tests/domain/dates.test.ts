@@ -4,6 +4,7 @@ import {
   addMonthsClamped,
   dueBucket,
   formatDueDate,
+  isBeyondHorizon,
   isoDateOfTimestamp,
   toIsoDate,
 } from "../../src/domain/dates";
@@ -68,5 +69,21 @@ describe("isoDateOfTimestamp", () => {
 
   it("returns an empty string for an unparsable timestamp", () => {
     expect(isoDateOfTimestamp("nope")).toBe("");
+  });
+});
+
+describe("isBeyondHorizon", () => {
+  const today = "2026-09-14";
+  it("keeps a task due exactly 30 days out in view", () => {
+    expect(isBeyondHorizon("2026-10-14", today)).toBe(false);
+  });
+  it("pushes a task due 31 days out beyond the horizon", () => {
+    expect(isBeyondHorizon("2026-10-15", today)).toBe(true);
+  });
+  it("keeps overdue tasks in view", () => {
+    expect(isBeyondHorizon("2026-08-01", today)).toBe(false);
+  });
+  it("keeps undated tasks in view", () => {
+    expect(isBeyondHorizon(undefined, today)).toBe(false);
   });
 });

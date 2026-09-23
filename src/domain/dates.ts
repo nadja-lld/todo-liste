@@ -43,6 +43,14 @@ export function addMonthsClamped(isoDate: string, months: number): string {
   return fromUtc(new Date(Date.UTC(year, month - 1 + months, clampedDay)));
 }
 
+/** How far ahead a list looks; anything due later waits in a collapsed section. */
+export const HORIZON_DAYS = 30;
+
+/** Undated and overdue tasks are always in view — only far-off due dates are not. */
+export function isBeyondHorizon(dueDate: string | undefined, today: string): boolean {
+  return dueDate !== undefined && dueDate > addDays(today, HORIZON_DAYS);
+}
+
 export function dueBucket(dueDate: string | undefined, today: string): DueBucket {
   if (dueDate === undefined) return "none";
   if (dueDate < today) return "overdue";

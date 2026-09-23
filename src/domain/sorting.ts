@@ -1,4 +1,4 @@
-import { addDays, dueBucket, isoDateOfTimestamp, type DueBucket } from "./dates";
+import { addDays, dueBucket, isBeyondHorizon, isoDateOfTimestamp, type DueBucket } from "./dates";
 import type { Priority, Task } from "./types";
 
 const BUCKET_ORDER: Record<DueBucket, number> = { overdue: 0, today: 1, future: 2, none: 3 };
@@ -21,15 +21,23 @@ export function sortOpenTasks(tasks: Task[], today: string): Task[] {
   });
 }
 
-/** Completed tasks are limited to the ones finished on `today` so the section stays a daily recap. */
-export function splitTasks(tasks: Task[], today: string): { open: Task[]; completed: Task[] } {
+/**
+ * Completed tasks are limited to the ones finished on `today` so the section stays a daily recap.
+ * Open tasks due beyond the horizon go to `later`, so next spring's chores don't bury this week's.
+ */
+export function splitTasks(
+  tasks: Task[],
+  today: string,
+): { open: Task[]; later: Task[]; completed: Task[] } {
   const open: Task[] = [];
+  const later: Task[] = [];
   const completed: Task[] = [];
   for (const task of tasks) {
-    if (task.completedAt === undefined) open.push(task);
-    else if (isoDateOfTimestamp(task.completedAt) === today) completed.push(task);
+    if (task.completedAt === undefined) {
+      (isBeyondHorizon(task.dueDate, today) ? later : open).push(task);
+    } else if (isoDateOfTimestamp(task.completedAt) === today) completed.push(task);
   }
-  return { open, completed };
+  return { open, later, completed };
 }
 
 /** How long a finished hand-over stays worth looking at. */
@@ -41,14 +49,19 @@ export const DELEGATED_DONE_DAYS = 7;
  * Wednesday — but not for the full retention period, or the view turns into a
  * graveyard that buries the open items.
  */
-export function splitDelegated(tasks: Task[], today: string): { open: Task[]; done: Task[] } {
+export function splitDelegated(
+  tasks: Task[],
+  today: string,
+): { open: Task[]; later: Task[]; done: Task[] } {
   const cutoff = addDays(today, -DELEGATED_DONE_DAYS);
   const open: Task[] = [];
+  const later: Task[] = [];
   const done: Task[] = [];
   for (const task of tasks) {
-    if (task.completedAt === undefined) open.push(task);
-    else if (isoDateOfTimestamp(task.completedAt) >= cutoff) done.push(task);
+    if (task.completedAt === undefined) {
+      (isBeyondHorizon(task.dueDate, today) ? later : open).push(task);
+    } else if (isoDateOfTimestamp(task.completedAt) >= cutoff) done.push(task);
   }
   done.sort((a, b) => compareStrings(b.completedAt ?? "", a.completedAt ?? ""));
-  return { open, done };
+  return { open, later: sortOpenTasks(later, today), done };
 }

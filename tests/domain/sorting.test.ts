@@ -85,6 +85,24 @@ describe("splitTasks", () => {
     expect(open).toEqual([]);
     expect(completed.map((t) => t.id)).toEqual(["today"]);
   });
+
+  it("moves open tasks due more than 30 days out into later", () => {
+    const tasks = [
+      task({ id: "soon", dueDate: "2026-10-14" }),
+      task({ id: "far", dueDate: "2026-10-15" }),
+      task({ id: "undated" }),
+    ];
+    const { open, later } = splitTasks(tasks, today);
+    expect(open.map((t) => t.id)).toEqual(["soon", "undated"]);
+    expect(later.map((t) => t.id)).toEqual(["far"]);
+  });
+
+  it("keeps a far-dated task that was finished today in completed", () => {
+    const tasks = [task({ id: "done", dueDate: "2026-12-01", completedAt: doneToday })];
+    const { later, completed } = splitTasks(tasks, today);
+    expect(later).toEqual([]);
+    expect(completed.map((t) => t.id)).toEqual(["done"]);
+  });
 });
 
 describe("splitDelegated", () => {
@@ -94,6 +112,15 @@ describe("splitDelegated", () => {
     const result = splitDelegated([task({ id: "offen" })], today);
     expect(result.open.map((t) => t.id)).toEqual(["offen"]);
     expect(result.done).toEqual([]);
+  });
+
+  it("moves open hand-overs due more than 30 days out into later", () => {
+    const result = splitDelegated(
+      [task({ id: "bald", dueDate: "2026-09-20" }), task({ id: "fern", dueDate: "2026-11-01" })],
+      today,
+    );
+    expect(result.open.map((t) => t.id)).toEqual(["bald"]);
+    expect(result.later.map((t) => t.id)).toEqual(["fern"]);
   });
 
   it("shows a task finished today", () => {

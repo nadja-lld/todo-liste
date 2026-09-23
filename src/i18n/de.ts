@@ -10,6 +10,7 @@ export const de = {
   addTask: "Hinzufügen",
   newTaskPlaceholder: "Neue Aufgabe",
   completedSection: "Erledigt ({count})",
+  laterSection: "Später ({count})",
   showCompleted: "Erledigte anzeigen",
   hideCompleted: "Erledigte ausblenden",
   emptyList: "Keine offenen Aufgaben",

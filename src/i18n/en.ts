@@ -12,6 +12,7 @@ export const en: Record<keyof typeof de, string> = {
   addTask: "Add",
   newTaskPlaceholder: "New task",
   completedSection: "Completed ({count})",
+  laterSection: "Later ({count})",
   showCompleted: "Show completed",
   hideCompleted: "Hide completed",
   emptyList: "No open tasks",

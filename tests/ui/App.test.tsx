@@ -317,6 +317,14 @@ describe("App with two people", () => {
     });
   }
 
+  function fakeStorageFrom(state: ReturnType<typeof twoPersonState>) {
+    return fakeStorage({
+      [STATE_KEY]: JSON.stringify(state),
+      "todo.identity": "a",
+      "todo.accessCode": "s3cret",
+    });
+  }
+
   it("shows only my own lists in the switcher", () => {
     render(<App storage={storedAs("a")} now={now} />);
     expect(screen.getByRole("tab", { name: "Nadjas Liste" })).toBeTruthy();
@@ -484,6 +492,46 @@ describe("App with two people", () => {
     // "Nadja" is also an option in the assignee select, so scope to the line.
     const line = screen.getByText("Angelegt von").closest("p");
     expect(line?.textContent).toContain("Nadja");
+  });
+
+  it("hides tasks due more than 30 days out behind a closed Später section", () => {
+    const state = twoPersonState();
+    const mine = (id: string, title: string, dueDate: string) =>
+      ({
+        ...state.tasks[0],
+        id,
+        title,
+        dueDate,
+      }) as (typeof state.tasks)[number];
+    state.tasks.push(mine("t-bald", "Bald fällig", "2026-10-14"));
+    state.tasks.push(mine("t-fern", "Weit weg", "2026-10-15"));
+
+    render(<App storage={fakeStorageFrom(state)} now={now} />);
+
+    const section = screen.getByText("Später (1)").closest("details") as HTMLDetailsElement;
+    expect(section.open).toBe(false);
+    expect(section.textContent).toContain("Weit weg");
+    expect(section.textContent).not.toContain("Bald fällig");
+    expect(screen.getByText("Meine Aufgabe").closest("details")).toBeNull();
+  });
+
+  it("hides far-off hand-overs behind a Später section too", () => {
+    const state = twoPersonState();
+    state.tasks.push({
+      ...state.tasks[1],
+      id: "t-weit",
+      title: "Im Dezember",
+      createdBy: "a",
+      dueDate: "2026-12-01",
+    } as (typeof state.tasks)[number]);
+
+    render(<App storage={fakeStorageFrom(state)} now={now} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Vergeben" }));
+
+    const section = screen.getByText("Später (1)").closest("details") as HTMLDetailsElement;
+    expect(section.open).toBe(false);
+    expect(section.textContent).toContain("Im Dezember");
+    expect(screen.getByText("Du hast nichts abgegeben")).toBeTruthy();
   });
 
   it("collapses finished hand-overs and drops them after a week", () => {

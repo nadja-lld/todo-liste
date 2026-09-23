@@ -50,7 +50,7 @@ function Row({ task, today, assigneeName, onOpen }: RowProps) {
  * closes the loop after handing one over without exposing their whole list.
  */
 export function DelegatedList(props: Props) {
-  const { open, done } = splitDelegated(props.tasks, props.today);
+  const { open, later, done } = splitDelegated(props.tasks, props.today);
 
   return (
     <section class="task-list">
@@ -68,6 +68,22 @@ export function DelegatedList(props: Props) {
             />
           ))}
         </ul>
+      )}
+      {later.length > 0 && (
+        <details class="later">
+          <summary>{t("laterSection", { count: later.length })}</summary>
+          <ul>
+            {later.map((task) => (
+              <Row
+                key={task.id}
+                task={task}
+                today={props.today}
+                assigneeName={props.assigneeName}
+                onOpen={props.onOpen}
+              />
+            ))}
+          </ul>
+        </details>
       )}
       {done.length > 0 && (
         <details
