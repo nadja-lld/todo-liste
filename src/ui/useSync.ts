@@ -69,7 +69,13 @@ export function useSync({ state, replace, storage, now, fetchImpl }: UseSyncArgs
           return;
         }
         markAdopted(storage);
-        if (result.outcome === "synced") {
+        // "unchanged" only says the server needs nothing from this device. The
+        // other person's edits may still be new here, so the merge is taken
+        // whenever it differs from what this device shows.
+        const isNewHere =
+          result.outcome === "synced" ||
+          JSON.stringify(result.state) !== JSON.stringify(stateRef.current);
+        if (isNewHere) {
           // Adopt into the ref before handing the state to the component. The
           // re-render that carries it arrives later, and a cycle starting in
           // between would otherwise still see this device's initial scaffold,

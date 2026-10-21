@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, render, waitFor } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { mergeState } from "../../src/domain/merge";
+import { parseAppState } from "../../src/domain/schema";
 import { inboxListId } from "../../src/domain/selectors";
 import { addTask, createInitialState } from "../../src/domain/state";
 import type { AppState } from "../../src/domain/types";
@@ -35,6 +37,13 @@ function base(): AppState {
 
 function withTask(state: AppState, title: string): AppState {
   return addTask(state, { listId: inboxListId(state, "a")!, title, createdBy: "a" }, NOW);
+}
+
+/** A document as a device holds it: merged into canonical order, then read back like storage does. */
+function canonical(state: AppState): AppState {
+  const parsed = parseAppState(JSON.parse(JSON.stringify(mergeState(state, state, NOW))));
+  if (!parsed.ok) throw new Error(parsed.error);
+  return parsed.state;
 }
 
 function respond(status: number, body: unknown): Response {
@@ -127,6 +136,51 @@ describe("useSync", () => {
     await waitFor(() => expect(view.getByTestId("status").textContent).toBe("idle"));
     expect(replace).toHaveBeenCalledWith(server);
     expect(storage.getItem(ADOPTED_KEY)).toBe("1");
+  });
+
+  it("shows the other person's new task even when this device has nothing to push", async () => {
+    const local = canonical(base());
+    const server = canonical(withTask(local, "Von der anderen Person"));
+    const fetchImpl = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(respond(200, { version: 7, state: server })));
+    const replace = vi.fn();
+
+    const view = render(
+      <Probe
+        storage={configured({ [ADOPTED_KEY]: "1" })}
+        state={local}
+        replace={replace}
+        fetchImpl={fetchImpl as unknown as typeof fetch}
+        onStatus={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(view.getByTestId("status").textContent).toBe("idle"));
+    expect(fetchImpl.mock.calls.some((call) => call[1]?.method === "PUT")).toBe(false);
+    expect(replace).toHaveBeenCalledWith(server);
+  });
+
+  it("leaves the state alone when the server holds exactly what this device shows", async () => {
+    const local = canonical(withTask(base(), "Schon da"));
+    const fetchImpl = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(respond(200, { version: 7, state: local })));
+    const replace = vi.fn();
+
+    const view = render(
+      <Probe
+        storage={configured({ [ADOPTED_KEY]: "1" })}
+        state={local}
+        replace={replace}
+        fetchImpl={fetchImpl as unknown as typeof fetch}
+        onStatus={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(view.getByTestId("status").textContent).toBe("idle"));
+    expect(fetchImpl.mock.calls.some((call) => call[1]?.method === "PUT")).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it("reports auth-error when the access code is refused", async () => {
